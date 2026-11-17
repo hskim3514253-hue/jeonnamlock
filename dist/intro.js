@@ -17,7 +17,7 @@
   const header = document.querySelector('.header');
 
   // Lock geometry on the door photo; keep in sync with .intro-lock in intro.css.
-  const LOCK_X = 0.375, LOCK_Y = 0.5, LOCK_BOX = 0.88, SEATED = 0.659, RATIO = 299 / 1300;
+  const LOCK_X = 0.375, LOCK_Y = 0.5, LOCK_BOX = 0.88, SEATED = 0.8, RATIO = 299 / 1300;
   // Depth as a share of the lock's width: body, then the handle standing proud of it.
   const BODY_DEPTH = 0.3, HANDLE_DEPTH = 0.42, BODY_SLICES = 9, HANDLE_SLICES = 11;
 
@@ -31,28 +31,30 @@
 
   // Build the model once.
   const part = (className, tag = 'div') => { const node = document.createElement(tag); node.className = className; node.setAttribute('aria-hidden', 'true'); return node; };
-  const shadow = part('lock-shadow');
+  const shadow = part('lock-shadow'), back = part('lock-back');
+  const sides = ['lock-side', 'lock-side lock-side-right', 'lock-side lock-side-handle', 'lock-side lock-side-handle lock-side-right'].map(name => part(name));
   const bodySlices = Array.from({ length: BODY_SLICES }, (_, i) => { const node = part('lock-slice'); node.style.background = grey(mix(7, 24, i / (BODY_SLICES - 1))); return node; });
   const handleSlices = Array.from({ length: HANDLE_SLICES }, (_, i) => { const node = part('lock-slice lock-slice-handle'); node.style.background = grey(mix(18, 40, i / (HANDLE_SLICES - 1))); return node; });
   const sheen = part('lock-sheen');
   const handleFace = part('lock-handle-face', 'img');
   handleFace.alt = ''; handleFace.src = face.getAttribute('src');
-  lock.prepend(shadow, ...bodySlices);
+  lock.prepend(back, shadow, ...bodySlices, ...sides);
   lock.append(sheen, ...handleSlices, handleFace);
 
   // The scene, as keyframes over scroll progress. scale is a multiple of the opening size,
   // focus is the point of the lock (from its centre, in lock heights/widths) held at `at`
   // (from the stage centre, in stage widths/heights). The last keyframe is the seated lock.
+  // The lock makes exactly one full turn (see TURN); the shots only move the camera.
   const SHOTS = [
-    { p: 0.00, ry: 0,   rx: 0,  rz: 0,   scale: 1,    focus: [0, 0],     at: [0, 0] },
-    { p: 0.05, ry: 0,   rx: 0,  rz: 0,   scale: 1,    focus: [0, 0],     at: [0, 0] },
-    { p: 0.22, ry: -56, rx: 5,  rz: -5,  scale: 2.0,  focus: [0, -0.25], at: [0.05, 0] },
-    { p: 0.34, ry: -30, rx: 8,  rz: -10, scale: 2.5,  focus: [0, -0.2],  at: [0.04, 0] },
-    { p: 0.50, ry: 44,  rx: -7, rz: 9,   scale: 2.6,  focus: [0, 0.07],  at: [0.02, 0] },
-    { p: 0.60, ry: 58,  rx: -4, rz: 4,   scale: 2.0,  focus: [0, 0.2],   at: [0.03, 0] },
-    { p: 0.70, ry: -26, rx: 0,  rz: -22, scale: 1.3,  focus: [0, 0],     at: [0.15, 0] },
+    { p: 0.00,  rx: 0, rz: 0,  scale: 1,    focus: [0, 0],     at: [0, 0] },
+    { p: 0.05,  rx: 0, rz: 0,  scale: 1,    focus: [0, 0],     at: [0, 0] },
+    { p: 0.225, rx: 6, rz: -4, scale: 2.1,  focus: [0, -0.22], at: [0.05, 0] },
+    { p: 0.39,  rx: 3, rz: 0,  scale: 1.35, focus: [0, 0],     at: [0.03, 0] },
+    { p: 0.555, rx: 6, rz: 4,  scale: 2.1,  focus: [0, 0.2],   at: [0.05, 0] },
+    { p: 0.72,  rx: 0, rz: 0,  scale: 1.2,  focus: [0, 0],     at: [0.08, 0] },
     { p: 0.86, seated: true }
   ];
+  const TURN = [0.06, 0.72];
 
   let layout = null, target = 0, shown = -1, frame = 0, drawn = 0;
 
@@ -68,17 +70,19 @@
     const seat = { x: x + door.offsetWidth * LOCK_X, y: y + door.offsetHeight * LOCK_Y };
     const narrow = width < 700 ? 0.4 : 1;
     layout = { seat, shots: SHOTS.map(shot => {
-      if (shot.seated) return { p: shot.p, ry: 0, rx: 0, rz: 0, scale: SEATED, x: 0, y: 0 };
+      if (shot.seated) return { p: shot.p, rx: 0, rz: 0, scale: SEATED, x: 0, y: 0 };
       const scale = first * (1 + (shot.scale - 1) * (width < 700 ? 0.8 : 1));
       const turn = shot.rz * Math.PI / 180;
-      const fx = shot.focus[0] * wide * scale * Math.cos(shot.ry * Math.PI / 180), fy = shot.focus[1] * box * scale;
-      return { p: shot.p, ry: shot.ry, rx: shot.rx, rz: shot.rz, scale,
+      const fx = shot.focus[0] * wide * scale, fy = shot.focus[1] * box * scale;
+      return { p: shot.p, rx: shot.rx, rz: shot.rz, scale,
         x: width / 2 + shot.at[0] * width * narrow - (fx * Math.cos(turn) - fy * Math.sin(turn)) - seat.x,
         y: height / 2 + shot.at[1] * height - (fx * Math.sin(turn) + fy * Math.cos(turn)) - seat.y };
     }) };
     // Depth of each slice, in layout pixels (the whole model is scaled as one).
     const body = wide * BODY_DEPTH, handle = wide * HANDLE_DEPTH;
     shadow.style.transform = 'translateZ(0)';
+    back.style.transform = 'translateZ(-0.6px)';
+    sides.forEach((node, i) => { const deep = i < 2 ? body : handle; node.style.width = deep.toFixed(2) + 'px'; node.style.transform = `translateZ(${(i < 2 ? 0 : body).toFixed(2)}px) rotateY(-90deg)`; });
     bodySlices.forEach((node, i) => { node.style.transform = `translateZ(${(body * i / (BODY_SLICES - 1)).toFixed(2)}px)`; });
     face.style.transform = `translateZ(${(body + 0.2).toFixed(2)}px)`;
     sheen.style.transform = `translateZ(${(body + 0.4).toFixed(2)}px)`;
@@ -93,14 +97,15 @@
     const from = shots[index], to = shots[index + 1], raw = span(p, from.p, to.p);
     const t = index === shots.length - 2 ? into(raw) : inOut(raw);
     const result = {};
-    for (const key of ['ry', 'rx', 'rz', 'scale', 'x', 'y']) result[key] = mix(from[key], to[key], t);
+    for (const key of ['rx', 'rz', 'scale', 'x', 'y']) result[key] = mix(from[key], to[key], t);
+    result.ry = 360 * inOut(span(p, TURN[0], TURN[1]));
     return result;
   }
 
   function render(p) {
     const now = pose(p), s = now.scale.toFixed(4);
     lock.style.transform = `translate3d(${now.x.toFixed(1)}px,${now.y.toFixed(1)}px,0) perspective(2200px) rotateZ(${now.rz.toFixed(2)}deg) rotateX(${now.rx.toFixed(2)}deg) rotateY(${now.ry.toFixed(2)}deg) scale3d(${s},${s},${s})`;
-    sheen.style.backgroundPositionX = (50 - now.ry * 1.1).toFixed(1) + '%';
+    sheen.style.backgroundPositionX = (50 - Math.sin(now.ry * Math.PI / 180) * 62).toFixed(1) + '%';
 
     const seat = span(p, 0.7, 0.86);
     shadow.style.opacity = Math.pow(seat, 6).toFixed(3);
@@ -114,7 +119,7 @@
     copy.style.transform = `translate3d(0,${((1 - words) * 18).toFixed(1)}px,0)`;
     copy.inert = words < 0.5;
 
-    const windows = [[-1, -1, 0.03, 0.1], [0.14, 0.2, 0.3, 0.36], [0.4, 0.46, 0.56, 0.62]];
+    const windows = [[-1, -1, 0.03, 0.1], [0.14, 0.19, 0.28, 0.33], [0.47, 0.52, 0.61, 0.66]];
     lines.forEach((line, i) => {
       const [a, b, c, d] = windows[i] || windows[0];
       line.style.opacity = (Math.min(span(p, a, b), 1 - span(p, c, d))).toFixed(3);
