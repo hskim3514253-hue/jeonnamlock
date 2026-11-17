@@ -32,7 +32,7 @@
     form.addEventListener('submit', event => { event.preventDefault(); const text = input.value.trim(); if (text) { input.value = ''; ask(text); } });
 
     const foot = node('div', 'price-chat-foot');
-    const call = node('a', null, '전화 상담 0507-1469-2808'); call.href = 'tel:050714692808';
+    const call = node('a', null, '전화 상담 010-9284-5963'); call.href = 'tel:01092845963';
     foot.append(node('p', null, 'AI가 가격표를 바탕으로 답합니다. 최종 금액은 상담 후 확정됩니다. 질문 내용은 답변을 만들기 위해 AI 서비스로 전송되니 전화번호 같은 개인정보는 적지 마세요.'), call);
 
     dialog.append(top, log, status, form, foot);

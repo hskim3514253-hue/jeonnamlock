@@ -13,7 +13,7 @@ export const DRILLING_FEE = 10000;
 // A product that is not listed here has no confirmed price and is never quoted one.
 export const PRODUCT_PRICES = {};
 
-export const SHOP_PHONE = '0507-1469-2808';
+export const SHOP_PHONE = '010-9284-5963';
 const won = amount => `${amount.toLocaleString('ko-KR')}원`;
 
 export function priceGroup(product) {
