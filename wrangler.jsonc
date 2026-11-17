@@ -1,0 +1,35 @@
+// Deployment to the owner's own Cloudflare account. Run `npm run deploy`.
+// Secrets (RATE_LIMIT_SALT, CONFIG_ENCRYPTION_KEY, VAPID_PRIVATE_JWK, optional ANTHROPIC_API_KEY)
+// are set with `wrangler secret put` and never written here.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "jeonnamlock",
+  "main": "cloudflare/worker.mjs",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./cloudflare/public",
+    "binding": "ASSETS",
+    // The Worker answers every request so its security headers, redirects and /api routes apply.
+    "run_worker_first": true,
+    "html_handling": "none",
+    "not_found_handling": "none"
+  },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "jeonnamlock", "database_id": "REPLACE_AFTER_D1_CREATE", "migrations_dir": "drizzle" }
+  ],
+  "r2_buckets": [
+    { "binding": "BUCKET", "bucket_name": "jeonnamlock-photos" }
+  ],
+  "vars": {
+    // Set to the address visitors use; form submissions from any other origin are refused.
+    "SITE_ORIGIN": "https://jeonnamlock.com",
+    // Admin email addresses, comma separated. Filled in at setup.
+    "ADMIN_USER_IDS": "",
+    // Cloudflare Access (Zero Trust) team domain and the application's audience tag. Filled in at setup.
+    "ACCESS_TEAM_DOMAIN": "",
+    "ACCESS_AUD": "",
+    "VAPID_PUBLIC_KEY": ""
+  },
+  "observability": { "enabled": true }
+}

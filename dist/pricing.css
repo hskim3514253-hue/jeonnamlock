@@ -1,0 +1,10 @@
+/* Structural styles for the designated-model price list. Colors and responsive presentation live in redesign.css. */
+.customer-page .pricing-heading{display:flex;justify-content:space-between}
+.customer-page .price-list{list-style:none;margin:0}
+.customer-page .price-row{display:grid;align-items:center}
+.customer-page .price-value{display:flex;align-items:baseline;white-space:nowrap}
+.customer-page .drilling-note{display:flex;justify-content:space-between;align-items:center}
+.customer-page .drilling-price{white-space:nowrap}
+.customer-page .quote-separate-note{margin-top:24px}
+.customer-page .quote-separate-note strong,.customer-page .quote-separate-note span{display:block}
+.customer-page .quote-separate-note span{margin-top:5px}

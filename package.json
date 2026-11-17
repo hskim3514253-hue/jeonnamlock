@@ -1,0 +1,22 @@
+{
+  "name": "jeonnam-lock",
+  "version": "2.0.0",
+  "private": true,
+  "engines": { "node": ">=24" },
+  "type": "module",
+  "packageManager": "pnpm@11.19.0",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test tests/backend.test.mjs tests/canonical-consult.test.mjs tests/analytics.test.mjs tests/analytics-client.test.mjs tests/analytics-view.test.mjs tests/quote-simple.test.mjs tests/quote-intents.test.mjs tests/quote-client.test.mjs tests/quote-view.test.mjs tests/build-assets.test.mjs tests/catalog.test.mjs tests/catalog-tools.test.mjs tests/chat.test.mjs tests/access.test.mjs tests/password-login.test.mjs",
+    "db:generate": "drizzle-kit generate",
+    "dev": "node preview-server.mjs",
+    "start": "node server.mjs",
+    "prepare:node": "node scripts/prepare.mjs",
+    "build:cloudflare": "node scripts/build-cloudflare.mjs",
+    "deploy": "node scripts/build-cloudflare.mjs && wrangler deploy"
+  },
+  "devDependencies": {
+    "drizzle-kit": "0.31.4",
+    "drizzle-orm": "0.44.5"
+  }
+}

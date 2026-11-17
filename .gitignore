@@ -1,0 +1,17 @@
+.sites-runtime/
+node_modules/
+*.tar.gz
+.env
+.env.*
+!.env.example
+dist/server/
+dist/.openai/
+.local-data/
+.worktrees/
+cloudflare/public/
+.wrangler/
+.dev.vars
+.playwright-mcp/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm

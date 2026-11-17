@@ -1,0 +1,32 @@
+/* Price-inquiry buttons on product cards and in the product detail, plus the chat dialog. */
+.catalog-slide,.catalog-grid-item{display:flex;flex-direction:column}
+.catalog-slide>.catalog-card,.catalog-grid-item>.product-tile{flex:1 1 auto;height:auto;border-bottom-left-radius:0;border-bottom-right-radius:0}
+.price-chat-space{display:none}
+.price-chat-card{flex:0 0 auto;appearance:none;min-height:48px;padding:12px 16px;border:1px solid #162c43;border-radius:0 0 4px 4px;background:#162c43;color:#fff;font-size:15px;font-weight:600;line-height:1.3;cursor:pointer;transition:background .16s}
+.price-chat-open{align-self:flex-start;appearance:none;min-height:50px;padding:13px 22px;border:1px solid #162c43;border-radius:2px;background:#162c43;color:#fff;font-size:17px;font-weight:600;line-height:1.3;cursor:pointer;transition:background .16s}
+.detail-price .price-chat-open span{font-size:inherit;color:inherit}
+.price-chat-card:active,.price-chat-open:active{transform:scale(.98)}
+.price-chat-card:focus-visible,.price-chat-open:focus-visible,.price-chat-close:focus-visible,.price-chat-form input:focus-visible{outline:2px solid #2955e9;outline-offset:2px}
+@media(hover:hover) and (pointer:fine){.price-chat-card:hover,.price-chat-open:hover{background:#29455f}}
+
+.price-chat{position:fixed;inset:0;margin:auto;width:min(440px,calc(100% - 32px));height:min(620px,calc(100dvh - 32px));padding:0;border:0;border-radius:8px;background:#fbfaf7;color:#162c43;text-align:left;overflow:hidden}
+.price-chat[open]{display:flex;flex-direction:column}
+.price-chat::backdrop{background:rgba(14,35,52,.5)}
+.price-chat-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:18px 20px 14px;border-bottom:1px solid #d9dbd6}
+.price-chat-top span{display:block;font-size:12px;color:#65717e}
+.price-chat-top h2{margin:2px 0 0;font-size:19px;line-height:1.35;letter-spacing:-.02em;font-weight:650}
+.price-chat-close{appearance:none;flex:0 0 auto;min-height:36px;padding:6px 10px;border:1px solid #c4c9c6;border-radius:2px;background:transparent;color:inherit;font-size:13px;cursor:pointer}
+.price-chat-log{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:10px;padding:18px 20px}
+.price-chat-bubble{margin:0;max-width:86%;padding:11px 14px;border-radius:12px;font-size:15px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.price-chat-bubble.is-user{align-self:flex-end;background:#162c43;color:#fff;border-bottom-right-radius:3px}
+.price-chat-bubble.is-bot{align-self:flex-start;background:#fff;border:1px solid #d9dbd6;border-bottom-left-radius:3px}
+.price-chat-bubble.is-error{border-color:#c9a59b;background:#fbf1ee}
+.price-chat-status{margin:0;padding:0 20px 10px;font-size:13px;color:#65717e}
+.price-chat-form{display:flex;gap:8px;padding:12px 20px;border-top:1px solid #d9dbd6}
+.price-chat-form input{flex:1 1 auto;min-width:0;min-height:46px;padding:10px 12px;border:1px solid #b9c0bd;border-radius:2px;background:#fff;color:inherit;font-size:16px}
+.price-chat-form input:disabled{background:#efeee8}
+.customer-page .price-chat-form .button{flex:0 0 auto;width:auto;min-height:46px;padding:10px 18px;font-size:15px}
+.price-chat-foot{padding:0 20px 16px}
+.price-chat-foot p{margin:0 0 8px;font-size:11.5px;line-height:1.55;color:#65717e}
+.price-chat-foot a{font-size:13px;font-weight:600;text-decoration:underline;text-underline-offset:3px}
+@media(max-width:640px){.price-chat{width:calc(100% - 20px);height:calc(100dvh - 20px)}.price-chat-card{font-size:14px;min-height:46px}}

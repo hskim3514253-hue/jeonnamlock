@@ -1,0 +1,35 @@
+# Render Blueprint for jeonnamlock.com. Customer inquiries, photos and push keys live on the disk.
+services:
+  - type: web
+    name: jeonnamlock
+    runtime: node
+    region: singapore
+    plan: starter
+    buildCommand: node scripts/prepare.mjs
+    startCommand: node server.mjs
+    healthCheckPath: /healthz
+    autoDeploy: true
+    disk:
+      name: jeonnamlock-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: DATA_DIR
+        value: /var/data
+      # Set to https://jeonnamlock.com once the domain points here. Until then the Render address is used.
+      - key: SITE_ORIGIN
+        sync: false
+      # The owner types this in the Render dashboard (10+ characters). It is never stored in the repository.
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: RATE_LIMIT_SALT
+        generateValue: true
+      - key: CONFIG_ENCRYPTION_KEY
+        generateValue: true
+      # Optional: enables AI answers in the price chat. Leave empty to answer from the price table.
+      - key: ANTHROPIC_API_KEY
+        sync: false

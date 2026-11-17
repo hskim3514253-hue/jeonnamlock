@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /signin-with-chatgpt
+
+Sitemap: https://jeonnamlock.com/sitemap.xml
