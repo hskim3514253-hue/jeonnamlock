@@ -33,3 +33,14 @@
 .customer-page .partner-direct .button:hover,.customer-page .repair-card>.button:hover,.customer-page .partner-card .button:hover{background:#f3eee3;border-color:#f3eee3;color:#111111}
 .customer-page .contact-phone svg,.customer-page .contact-details svg{color:#d9541e}
 .customer-page .contact-details a{color:#f3eee3;text-decoration:underline;text-underline-offset:3px}
+/* FAQ */
+.faq-section{padding-top:96px;padding-bottom:96px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:48px;align-items:start}
+.faq-section h2{margin:0;font-size:clamp(28px,3vw,40px);line-height:1.25;letter-spacing:-.03em;font-weight:650}
+.faq-list{border-top:2px solid #111111}
+.faq-list details{border-bottom:1px solid #d9d3c5}
+.faq-list summary{list-style:none;cursor:pointer;padding:20px 40px 20px 0;font-size:17px;font-weight:600;line-height:1.5;position:relative}
+.faq-list summary::-webkit-details-marker{display:none}
+.faq-list summary::after{content:"+";position:absolute;right:6px;top:18px;font-size:22px;font-weight:400;color:#d9541e;line-height:1}
+.faq-list details[open] summary::after{content:"\2212"}
+.faq-list p{margin:0 0 22px;max-width:44em;font-size:15px;line-height:1.75;color:#111111}
+@media(max-width:900px){.faq-section{grid-template-columns:1fr;gap:24px;padding-top:64px;padding-bottom:64px}.faq-list summary{font-size:16px}}

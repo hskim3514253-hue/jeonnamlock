@@ -4,4 +4,22 @@ Disallow: /admin
 Disallow: /api/
 Disallow: /signin-with-chatgpt
 
+# AI search and answer engines are welcome to read the public pages.
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: Claude-SearchBot
+User-agent: Claude-User
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+User-agent: Yeti
+User-agent: Bingbot
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /signin-with-chatgpt
+
 Sitemap: https://jeonnamlock.com/sitemap.xml
