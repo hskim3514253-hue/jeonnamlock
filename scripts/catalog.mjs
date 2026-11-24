@@ -1,3 +1,4 @@
+import {renderModelIndex} from './product-pages.mjs';
 import {readFile,writeFile} from 'node:fs/promises';
 import {products,videos} from '../src/catalog.mjs';
 import {categories,escapeHtml as e,renderProductCard,videoEmbedUrl} from '../dist/catalog-tools.js';
@@ -34,6 +35,7 @@ export function renderCatalog(items){
   <div id="catalog-empty" class="catalog-empty" hidden><h4>조건에 맞는 제품이 없어요.</h4><p>검색어를 줄이거나 다른 브랜드·종류를 선택해보세요.<br>찾는 모델이 없어도 사진 견적으로 문의할 수 있습니다.</p><a href="#quote" class="text-button">원하는 모델 사진으로 문의 ↗</a></div>
   <div class="catalog-pagination" id="catalog-pagination"><button type="button" id="catalog-page-prev" aria-label="이전 제품 목록" disabled>← 이전</button><span id="catalog-page-status">1 / ${Math.ceil(items.length/12)}</span><button type="button" id="catalog-page-next" aria-label="다음 제품 목록" ${items.length<=12?'disabled':''}>다음 →</button></div>
   <p class="catalog-source-note">제품 사진과 제조사 자료를 함께 안내합니다. 사진의 색상·구성품은 설치 조건에 따라 달라질 수 있으니 상담 시 확인해주세요.</p>
+  ${renderModelIndex(items)}
   <noscript><p>전체 검색·상세 설명은 자바스크립트가 필요합니다. <a href="tel:01092845963">전화로 제품 상담하기</a></p></noscript></div>
   <div class="catalog-videos"><div class="catalog-video-heading"><span class="catalog-kicker">WATCH & DISCOVER</span><h3>영상으로 먼저 만나보세요.</h3><p>제조사 공식 광고와 사용 안내를 원본 영상으로 확인하세요.</p></div><div class="catalog-video-grid">${videos.map(videoCard).join('')}</div></div></div>
   <script type="application/json" id="catalog-data">${JSON.stringify(items).replace(/</g,'\\u003c')}</script><script type="application/json" id="catalog-videos-data">${JSON.stringify(videos).replace(/</g,'\\u003c')}</script>

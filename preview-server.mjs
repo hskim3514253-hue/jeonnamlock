@@ -1,5 +1,6 @@
 import {generateCatalog,products} from './scripts/catalog.mjs';
 import {basePublicFiles} from './scripts/public-files.mjs';
+import {productPages,renderSitemap} from './scripts/product-pages.mjs';
 await generateCatalog();
 import http from 'node:http';
 import {readFile} from 'node:fs/promises';
@@ -13,7 +14,8 @@ const local=await createLocalEnvironment(path.join(directory,'.local-data'));
 const publicFiles=new Set(basePublicFiles);
 for (const product of products) for (const image of product.images) publicFiles.add(image.src);
 const types={html:'text/html; charset=utf-8',txt:'text/plain; charset=utf-8',xml:'application/xml; charset=utf-8',css:'text/css; charset=utf-8',js:'text/javascript; charset=utf-8',pdf:'application/pdf',png:'image/png',webp:'image/webp',jpg:'image/jpeg',svg:'image/svg+xml',webmanifest:'application/manifest+json'};
-const worker=createWorker(async pathname=>{const name=pathname.slice(1);if(!publicFiles.has(name))return new Response('Not found',{status:404});return new Response(await readFile(path.join(directory,'dist',name)),{headers:{'Content-Type':types[name.split('.').pop()],'Cache-Control':'no-store'}});});
+const pages=productPages(products),sitemap=renderSitemap(products,new Date().toISOString().slice(0,10));
+const worker=createWorker(async pathname=>{if(pages.has(pathname))return new Response(pages.get(pathname),{headers:{'Content-Type':types.html,'Cache-Control':'no-store'}});if(pathname==='/sitemap.xml')return new Response(sitemap,{headers:{'Content-Type':types.xml,'Cache-Control':'no-store'}});const name=pathname.slice(1);if(!publicFiles.has(name))return new Response('Not found',{status:404});return new Response(await readFile(path.join(directory,'dist',name)),{headers:{'Content-Type':types[name.split('.').pop()],'Cache-Control':'no-store'}});});
 const server=http.createServer(async(req,res)=>{
   try{
     const url=new URL(req.url,local.env.SITE_ORIGIN);

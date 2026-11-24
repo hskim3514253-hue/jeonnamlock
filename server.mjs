@@ -5,6 +5,7 @@
 //   ADMIN_PASSWORD, SESSION_SECRET, RATE_LIMIT_SALT, CONFIG_ENCRYPTION_KEY   secrets set on the host
 import { generateCatalog, products } from './scripts/catalog.mjs';
 import { publicFiles } from './scripts/public-files.mjs';
+import { productPages, renderSitemap } from './scripts/product-pages.mjs';
 import http from 'node:http';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
@@ -48,7 +49,11 @@ if (!passwordLoginReady(env)) console.error('ADMIN_LOGIN_DISABLED set ADMIN_PASS
 
 const served = new Set([...publicFiles(products), 'login.html', 'login.js', 'login.css']);
 const types = { html: 'text/html; charset=utf-8', txt: 'text/plain; charset=utf-8', xml: 'application/xml; charset=utf-8', css: 'text/css; charset=utf-8', js: 'text/javascript; charset=utf-8', pdf: 'application/pdf', png: 'image/png', webp: 'image/webp', jpg: 'image/jpeg', svg: 'image/svg+xml', webmanifest: 'application/manifest+json' };
+const pages = productPages(products);
+const sitemap = renderSitemap(products, new Date().toISOString().slice(0, 10));
 const worker = createWorker(async pathname => {
+  if (pages.has(pathname)) return new Response(pages.get(pathname), { headers: { 'Content-Type': types.html, 'Cache-Control': 'no-cache' } });
+  if (pathname === '/sitemap.xml') return new Response(sitemap, { headers: { 'Content-Type': types.xml, 'Cache-Control': 'no-cache' } });
   const name = pathname === '/admin/login' ? 'login.html' : pathname.slice(1);
   if (!served.has(name)) return new Response('찾을 수 없는 페이지입니다.', { status: 404 });
   const extension = name.split('.').pop();

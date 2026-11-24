@@ -107,3 +107,7 @@ Web Push(RFC 8030)와 VAPID(RFC 8292)를 사용하므로 별도 문자 서비스
 - **데이터**: Sites의 기존 문의·사진·푸시 구독은 옮기지 않고 새로 시작합니다. 전환 전에 기존 접수함을 처리해야 합니다.
 - **도메인**: Render에 `jeonnamlock.com`을 사용자 도메인으로 추가한 뒤 가비아 DNS의 A 레코드를 Render가 안내하는 값으로 바꿉니다. 네임서버 변경은 필요 없습니다.
 - `cloudflare/`, `wrangler.jsonc`, `src/access.mjs`는 Cloudflare 계정으로 옮기는 대안으로 만들어 둔 것이며 Render에서는 쓰지 않습니다. `scripts/build.mjs`와 `.openai/`는 이전 Sites 배포용입니다.
+
+## 제품별 페이지와 사이트맵
+
+상품마다 `/products/<id>` 주소의 페이지가 있습니다. `scripts/product-pages.mjs`가 서버를 시작할 때 카탈로그에서 페이지를 만들므로 별도 파일로 저장하지 않으며, 카탈로그를 고치면 페이지도 함께 바뀝니다. `server.mjs`는 `/sitemap.xml`도 같은 목록으로 만들어 홈페이지와 모든 제품 주소를 담습니다(`dist/sitemap.xml`은 다른 호스트용 기본 파일입니다). 홈페이지의 "전체 모델 목록"이 각 제품 페이지로 연결합니다. 제품 구조화 데이터에는 가격이나 별점을 넣지 않습니다.
