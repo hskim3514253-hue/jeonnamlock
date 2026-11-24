@@ -1401,7 +1401,7 @@ export const keynewsProducts=[
       "SDL621-3F",
       "SDL6213F"
     ],
-    "tagline": "비밀번호 · 카드키 · 지문로 사용하는 지문인식 푸시풀형.",
+    "tagline": "비밀번호 · 카드키 · 지문으로 사용하는 지문인식 푸시풀형.",
     "description": "비밀번호 · 카드키 · 지문 인증을 지원하는 지문인식 푸시풀형입니다.",
     "tags": [
       "비밀번호",
@@ -2019,7 +2019,7 @@ export const keynewsProducts=[
       "아이레보",
       "WF201"
     ],
-    "tagline": "지문로 사용하는 지문인식 주키.",
+    "tagline": "지문으로 사용하는 지문인식 주키.",
     "description": "지문 인증을 지원하는 지문인식 주키입니다.",
     "tags": [
       "지문"
@@ -2372,7 +2372,7 @@ export const keynewsProducts=[
       "SHP-DP960",
       "SHPDP960"
     ],
-    "tagline": "지문로 사용하는 지문인식 푸시풀형.",
+    "tagline": "지문으로 사용하는 지문인식 푸시풀형.",
     "description": "지문 인증을 지원하는 지문인식 푸시풀형입니다.",
     "tags": [
       "지문"
@@ -2547,7 +2547,7 @@ export const keynewsProducts=[
       "EVERNET",
       "L70WF"
     ],
-    "tagline": "비밀번호 · 지문로 사용하는 목문용 지문 도어락.",
+    "tagline": "비밀번호 · 지문으로 사용하는 목문용 지문 도어락.",
     "description": "비밀번호 · 지문 인증을 지원하는 목문용 지문 도어락입니다.",
     "tags": [
       "비밀번호",
@@ -2928,7 +2928,7 @@ export const keynewsProducts=[
       "SHS-DP940",
       "SHSDP940"
     ],
-    "tagline": "비밀번호 · 카드키 · 지문로 사용하는 지문인식 푸시풀형.",
+    "tagline": "비밀번호 · 카드키 · 지문으로 사용하는 지문인식 푸시풀형.",
     "description": "비밀번호 · 카드키 · 지문 인증을 지원하는 지문인식 푸시풀형입니다.",
     "tags": [
       "비밀번호",
@@ -3120,7 +3120,7 @@ export const keynewsProducts=[
       "SHP-P71",
       "SHPP71"
     ],
-    "tagline": "비밀번호 · 카드키 · 지문로 사용하는 지문인식 푸시풀형.",
+    "tagline": "비밀번호 · 카드키 · 지문으로 사용하는 지문인식 푸시풀형.",
     "description": "비밀번호 · 카드키 · 지문 인증을 지원하는 지문인식 푸시풀형입니다.",
     "tags": [
       "비밀번호",
@@ -3217,7 +3217,7 @@ export const keynewsProducts=[
       "SHP-DR900",
       "SHPDR900"
     ],
-    "tagline": "비밀번호 · 카드키 · 지문 · 비상키 · 스마트폰 앱로 사용하는 지문인식 푸시풀형.",
+    "tagline": "비밀번호 · 카드키 · 지문 · 비상키 · 스마트폰 앱으로 사용하는 지문인식 푸시풀형.",
     "description": "비밀번호 · 카드키 · 지문 · 비상키 · 스마트폰 앱 인증을 지원하는 지문인식 푸시풀형입니다.",
     "tags": [
       "비밀번호",
@@ -3314,7 +3314,7 @@ export const keynewsProducts=[
       "SHP-DR700",
       "SHPDR700"
     ],
-    "tagline": "비밀번호 · 카드키 · 스마트폰 앱로 사용하는 푸시풀형.",
+    "tagline": "비밀번호 · 카드키 · 스마트폰 앱으로 사용하는 푸시풀형.",
     "description": "비밀번호 · 카드키 · 스마트폰 앱 인증을 지원하는 푸시풀형입니다.",
     "tags": [
       "비밀번호",
@@ -3411,7 +3411,7 @@ export const keynewsProducts=[
       "SHP-P61F",
       "SHPP61F"
     ],
-    "tagline": "비밀번호 · 카드키 · 지문로 사용하는 지문인식 푸시풀형.",
+    "tagline": "비밀번호 · 카드키 · 지문으로 사용하는 지문인식 푸시풀형.",
     "description": "비밀번호 · 카드키 · 지문 인증을 지원하는 지문인식 푸시풀형입니다.",
     "tags": [
       "비밀번호",
@@ -3676,7 +3676,7 @@ export const keynewsProducts=[
       "SHP-P52F",
       "SHPP52F"
     ],
-    "tagline": "비밀번호 · 카드키 · 지문로 사용하는 지문인식 푸시풀형.",
+    "tagline": "비밀번호 · 카드키 · 지문으로 사용하는 지문인식 푸시풀형.",
     "description": "비밀번호 · 카드키 · 지문 인증을 지원하는 지문인식 푸시풀형입니다.",
     "tags": [
       "비밀번호",
@@ -3771,7 +3771,7 @@ export const keynewsProducts=[
       "K-3",
       "K3"
     ],
-    "tagline": "비밀번호 · 카드키 · 지문로 사용하는 목문용 지문 주키.",
+    "tagline": "비밀번호 · 카드키 · 지문으로 사용하는 목문용 지문 주키.",
     "description": "비밀번호 · 카드키 · 지문 인증을 지원하는 목문용 지문 주키입니다.",
     "tags": [
       "비밀번호",
@@ -4145,7 +4145,7 @@ export const keynewsProducts=[
       "HDL-A1001F",
       "HDLA1001F"
     ],
-    "tagline": "비밀번호 · 카드키 · 지문로 사용하는 지문인식 푸시풀형.",
+    "tagline": "비밀번호 · 카드키 · 지문으로 사용하는 지문인식 푸시풀형.",
     "description": "비밀번호 · 카드키 · 지문 인증을 지원하는 지문인식 푸시풀형입니다.",
     "tags": [
       "비밀번호",

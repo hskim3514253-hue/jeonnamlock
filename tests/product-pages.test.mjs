@@ -27,3 +27,13 @@ test('product text is escaped and the sitemap and homepage list link every page'
   const index=renderModelIndex(products);
   for(const product of products)assert.ok(index.includes(`href="/products/${product.id}"`),product.id);
 });
+test('fingerprint push-pull models quote the fingerprint price, like the chat does',async()=>{
+  const {priceProducts}=await import('../src/product-index.mjs');
+  const {priceAnswer}=await import('../src/prices.mjs');
+  const pages=productPages(products);
+  for(const product of products){
+    const html=pages.get(productPath(product)).replace(/&amp;/g,'&').replace(/&quot;/g,'"');
+    assert.ok(html.includes(priceAnswer({id:product.id,...priceProducts[product.id]})),product.id);
+  }
+  assert.ok(pages.get('/products/k100').includes('250,000원'));
+});

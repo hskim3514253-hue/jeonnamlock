@@ -32,9 +32,9 @@ export function priceAnswer(product) {
   }
   const group = priceGroup(product);
   if (group) {
-    return `${product.name}은 아직 모델별 가격이 등록되어 있지 않습니다. 같은 종류인 ${group.label}의 지정 제품은 설치비 포함 ${won(group.price)}이고, 타공이 필요하면 ${won(DRILLING_FEE)}이 추가됩니다. 이 모델은 제품에 따라 금액이 달라 별도 견적으로 안내합니다. 전화 ${SHOP_PHONE}로 문의하시면 바로 확인해드립니다.`;
+    return `${product.name}은 아직 모델별 가격이 등록되어 있지 않습니다. 같은 종류인 ${group.label}의 지정 제품은 설치비 포함 ${won(group.price)}이고, 타공이 필요하면 ${won(DRILLING_FEE)}이 추가됩니다. 이 모델은 제품에 따라 금액이 달라 별도 견적으로 안내합니다. 전화 ${SHOP_PHONE}으로 문의하시면 바로 확인해드립니다.`;
   }
-  return `${product.name}은 문 종류와 설치 조건에 따라 금액이 달라 개별 견적으로 안내합니다. 전화 ${SHOP_PHONE}로 문의하시거나 홈페이지의 상담 문의를 남겨주세요.`;
+  return `${product.name}은 문 종류와 설치 조건에 따라 금액이 달라 개별 견적으로 안내합니다. 전화 ${SHOP_PHONE}으로 문의하시거나 홈페이지의 상담 문의를 남겨주세요.`;
 }
 
 export function chatSystemPrompt(product) {

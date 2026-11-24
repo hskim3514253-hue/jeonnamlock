@@ -60,7 +60,7 @@ export function renderProductPage(product, products) {
       <p class="product-tagline">${e(product.tagline)}</p>
       <p class="product-description">${e(product.description)}</p>
       ${product.tags?.length ? `<ul class="product-tags">${product.tags.map(tag => `<li>${e(tag)}</li>`).join('')}</ul>` : ''}
-      <section class="product-price" aria-labelledby="price-title"><h2 id="price-title">설치 가격</h2><p>${e(priceAnswer(product))}</p></section>
+      <section class="product-price" aria-labelledby="price-title"><h2 id="price-title">설치 가격</h2><p>${e(priceAnswer({ ...product, fingerprint: /지문/.test([product.type, ...(product.tags || [])].join(' ')) }))}</p></section>
       <div class="product-actions"><a href="tel:${TEL}" class="button">전화 상담 ${SHOP_PHONE}</a><a href="/#quote" class="button secondary">온라인 상담 남기기</a></div>
       <p class="product-area">광주 북구·광산구·서구·남구·동구에서 설치합니다. 담양·장성 등 인근 전남 지역은 전화로 일정을 확인해 드립니다.</p>
     </div>
