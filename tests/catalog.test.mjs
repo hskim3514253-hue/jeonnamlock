@@ -56,12 +56,12 @@ test('rotation stops for every pause reason, resumes safely, and cancels on disp
   rotation.dispose();assert.equal(timers.size,0);rotation.setPaused('user',false);assert.equal(timers.size,0);
 });
 
-test('service journeys precede the full catalog and fixed installation prices remain',async()=>{
+test('service journeys precede the full catalog and no price is published',async()=>{
   const {generateCatalog}=await import('../scripts/catalog.mjs');await generateCatalog();
   const html=await readFile(new URL('../dist/index.html',import.meta.url),'utf8');
   assert.ok(html.indexOf('class="service-hero"')<html.indexOf('id="products"'));
   assert.match(html,/data-intent="repair"/);assert.match(html,/data-intent="business"/);
   assert.equal((html.match(/id="products"/g)||[]).length,1);
-  assert.match(html,/60,000/);assert.match(html,/250,000/);assert.match(html,/10,000/);
+  assert.doesNotMatch(html,/d{2,3},000|1만원|가격표|id="prices"/);
   assert.match(html,/id="product-dialog"/);assert.match(html,/id="product-gallery"/);
 });

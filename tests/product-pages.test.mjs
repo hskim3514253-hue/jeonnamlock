@@ -27,7 +27,7 @@ test('product text is escaped and the sitemap and homepage list link every page'
   const index=renderModelIndex(products);
   for(const product of products)assert.ok(index.includes(`href="/products/${product.id}"`),product.id);
 });
-test('fingerprint push-pull models quote the fingerprint price, like the chat does',async()=>{
+test('product pages give the same price answer as the chat and quote no amount',async()=>{
   const {priceProducts}=await import('../src/product-index.mjs');
   const {priceAnswer}=await import('../src/prices.mjs');
   const pages=productPages(products);
@@ -35,5 +35,5 @@ test('fingerprint push-pull models quote the fingerprint price, like the chat do
     const html=pages.get(productPath(product)).replace(/&amp;/g,'&').replace(/&quot;/g,'"');
     assert.ok(html.includes(priceAnswer({id:product.id,...priceProducts[product.id]})),product.id);
   }
-  assert.ok(pages.get('/products/k100').includes('250,000원'));
+  assert.doesNotMatch(pages.get('/products/k100'),/d{2,3},000|설치비/);
 });

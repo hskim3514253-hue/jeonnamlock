@@ -12,7 +12,7 @@ export const productPath = product => `/products/${product.id}`;
 export function renderProductPage(product, products) {
   const url = ORIGIN + productPath(product);
   const title = `${product.name} 설치 · 가격문의 | 광주 전남열쇠`;
-  const summary = `${product.name}(${product.type}) 광주·전남 설치 상담. ${product.tagline} 설치비 포함 가격은 전화 ${SHOP_PHONE} 또는 가격문의로 안내합니다.`;
+  const summary = `${product.name}(${product.type}) 광주·전남 설치 상담. ${product.tagline} 가격은 전화 ${SHOP_PHONE} 또는 가격문의로 안내합니다.`;
   const images = product.images || [];
   const cover = images[0] ? `${ORIGIN}/${images[0].src}` : `${ORIGIN}/og-image.jpg`;
   const siblings = products.filter(other => other.brandKey === product.brandKey && other.id !== product.id);
@@ -49,7 +49,7 @@ export function renderProductPage(product, products) {
   <symbol id="i-phone" viewBox="0 0 24 24"><path d="m7 3 3 5-3 3a16 16 0 0 0 6 6l3-3 5 3c0 3-2 4-4 4C9 20 4 15 3 7c0-2 1-4 4-4Z"/></symbol>
 </defs></svg>
 <a href="#main" class="skip-link">본문 바로가기</a>
-<header class="header"><div class="container nav-row"><a class="brand" href="/" aria-label="전남열쇠 홈"><span>전남열쇠<span class="brand-sub">광주 도어락 설치 · 교체</span></span></a><nav aria-label="주 메뉴"><a href="/#products">제품 보기</a><a href="/#prices">설치 가격</a><a href="/#business">업체 · 다량 설치</a><a href="/#quote">상담 문의</a><a href="/#contact">매장 안내</a></nav><a class="header-phone" href="tel:${TEL}"><svg><use href="#i-phone"/></svg><span>${SHOP_PHONE}</span></a></div></header>
+<header class="header"><div class="container nav-row"><a class="brand" href="/" aria-label="전남열쇠 홈"><span>전남열쇠<span class="brand-sub">광주 도어락 설치 · 교체</span></span></a><nav aria-label="주 메뉴"><a href="/#products">제품 보기</a><a href="/#business">업체 · 다량 설치</a><a href="/#quote">상담 문의</a><a href="/#contact">매장 안내</a></nav><a class="header-phone" href="tel:${TEL}"><svg><use href="#i-phone"/></svg><span>${SHOP_PHONE}</span></a></div></header>
 <main id="main" class="container product-main">
   <nav class="product-crumbs" aria-label="현재 위치"><a href="/">전남열쇠</a><span aria-hidden="true">/</span><a href="/#products">도어락 제품</a><span aria-hidden="true">/</span><span>${e(product.brand)}</span></nav>
   <div class="product-top">
@@ -60,7 +60,7 @@ export function renderProductPage(product, products) {
       <p class="product-tagline">${e(product.tagline)}</p>
       <p class="product-description">${e(product.description)}</p>
       ${product.tags?.length ? `<ul class="product-tags">${product.tags.map(tag => `<li>${e(tag)}</li>`).join('')}</ul>` : ''}
-      <section class="product-price" aria-labelledby="price-title"><h2 id="price-title">설치 가격</h2><p>${e(priceAnswer({ ...product, fingerprint: /지문/.test([product.type, ...(product.tags || [])].join(' ')) }))}</p></section>
+      <section class="product-price" aria-labelledby="price-title"><h2 id="price-title">가격 안내</h2><p>${e(priceAnswer({ ...product, fingerprint: /지문/.test([product.type, ...(product.tags || [])].join(' ')) }))}</p></section>
       <div class="product-actions"><a href="tel:${TEL}" class="button">전화 상담 ${SHOP_PHONE}</a><a href="/#quote" class="button secondary">온라인 상담 남기기</a></div>
       <p class="product-area">광주 북구·광산구·서구·남구·동구에서 설치합니다. 담양·장성 등 인근 전남 지역은 전화로 일정을 확인해 드립니다.</p>
     </div>
