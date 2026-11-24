@@ -6,6 +6,7 @@
 import { generateCatalog, products } from './scripts/catalog.mjs';
 import { publicFiles } from './scripts/public-files.mjs';
 import { productPages, renderSitemap } from './scripts/product-pages.mjs';
+import { ensureVisitTable, validVisit, recordVisit, readReport, reportAllowed } from './src/report.mjs';
 import http from 'node:http';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
@@ -49,6 +50,35 @@ if (!passwordLoginReady(env)) console.error('ADMIN_LOGIN_DISABLED set ADMIN_PASS
 
 const served = new Set([...publicFiles(products), 'login.html', 'login.js', 'login.css']);
 const types = { html: 'text/html; charset=utf-8', txt: 'text/plain; charset=utf-8', xml: 'application/xml; charset=utf-8', css: 'text/css; charset=utf-8', js: 'text/javascript; charset=utf-8', pdf: 'application/pdf', png: 'image/png', webp: 'image/webp', jpg: 'image/jpeg', svg: 'image/svg+xml', webmanifest: 'application/manifest+json' };
+await ensureVisitTable(storage.env.DB);
+const productIds = new Set(products.map(product => product.id));
+const reportToken = process.env.REPORT_TOKEN || '';
+const visitLimits = new Map();
+const plain = (status, body = null, type) => new Response(body, { status, headers: { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow', ...(type ? { 'Content-Type': type } : {}) } });
+
+// Totals of where visits come from and which page was opened. Bots, the owner and other sites are left out.
+async function visit(request) {
+  const minute = Math.floor(Date.now() / 60000), address = request.headers.get('CF-Connecting-IP') || 'unknown';
+  if (visitLimits.size > 5000) visitLimits.clear();
+  const used = visitLimits.get(address);
+  visitLimits.set(address, used?.minute === minute ? { minute, count: used.count + 1 } : { minute, count: 1 });
+  if (visitLimits.get(address).count > 60) return plain(429);
+  if (request.headers.get('Origin') !== origin || Number(request.headers.get('Content-Length') || 0) > 512) return plain(204);
+  if (/bot|crawler|spider|headless|lighthouse|preview|facebookexternalhit/i.test(request.headers.get('User-Agent') || '')) return plain(204);
+  if (await passwordIdentity(request, env)) return plain(204);
+  let body = null;
+  try { body = JSON.parse((await request.text()).slice(0, 512)); } catch {}
+  const cleaned = validVisit(body, productIds);
+  if (cleaned) await recordVisit(storage.env.DB, Date.now(), cleaned);
+  return plain(204);
+}
+// Summary numbers for the owner's weekly report. Opens only with the report key; holds no customer details.
+async function report(request, url) {
+  if (!reportToken) return plain(404, '찾을 수 없는 페이지입니다.', 'text/plain; charset=utf-8');
+  if (!await reportAllowed(request, reportToken)) return plain(401, '보고용 열쇠가 필요합니다.', 'text/plain; charset=utf-8');
+  return plain(200, JSON.stringify(await readReport(storage.env.DB, url.searchParams.get('days') || 7, Date.now())), 'application/json; charset=utf-8');
+}
+
 const pages = productPages(products);
 const sitemap = renderSitemap(products, new Date().toISOString().slice(0, 10));
 const worker = createWorker(async pathname => {
@@ -73,6 +103,8 @@ const server = http.createServer(async (req, res) => {
     headers.set('CF-Connecting-IP', String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || 'unknown');
     const request = new Request(url, { method: req.method, headers, body: ['GET', 'HEAD'].includes(req.method) ? undefined : Readable.toWeb(req), duplex: 'half' });
     const response = url.pathname === '/api/login' && req.method === 'POST' ? await passwordLogin(request, env)
+      : url.pathname === '/api/visit' && req.method === 'POST' ? await visit(request)
+      : url.pathname === '/api/report' && req.method === 'GET' ? await report(request, url)
       : url.pathname === '/api/logout' && req.method === 'POST' ? passwordLogout(request, env)
       : await worker.fetch(request, env, { waitUntil: promise => promise.catch(() => console.error('BACKGROUND_TASK_FAILED')) });
     const out = {};

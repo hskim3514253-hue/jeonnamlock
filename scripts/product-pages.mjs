@@ -41,7 +41,7 @@ export function renderProductPage(product, products) {
   <meta name="theme-color" content="#111111">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
   <link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/redesign.css"><link rel="stylesheet" href="/conversion.css"><link rel="stylesheet" href="/product-page.css">
-  <script src="/analytics.js" defer></script>
+  <script src="/visits.js" defer></script>
 </head>
 <body class="customer-page product-page">
 <svg class="svg-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>

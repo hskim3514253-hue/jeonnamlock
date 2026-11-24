@@ -31,5 +31,8 @@ services:
       - key: CONFIG_ENCRYPTION_KEY
         generateValue: true
       # Optional: enables AI answers in the price chat. Leave empty to answer from the price table.
+      # Optional: lets the owner's weekly report read summary visit numbers from /api/report.
+      - key: REPORT_TOKEN
+        sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
