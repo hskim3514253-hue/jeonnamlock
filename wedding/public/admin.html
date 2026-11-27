@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="referrer" content="no-referrer">
+  <title>운영자 페이지</title>
+  <link rel="stylesheet" href="common.css">
+</head>
+<body>
+  <main class="wrap" id="view"></main>
+
+  <script src="common.js"></script>
+  <script>
+    const view = $('#view');
+    const token = hashToken('wr_admin');
+    const call = (method, url, body) => api(method, url, body, token);
+
+    async function load() {
+      const d = await call('GET', 'api/admin');
+      const unpaid = d.planners.flatMap((p) => p.months.filter((m) => !m.paidAt).map((m) => ({ ...m, p })));
+      view.innerHTML = `
+        <h1 style="font-size: 2rem; margin: 0.75rem 0 1.25rem;">운영자 페이지</h1>
+        <div class="grid4" style="margin-bottom: 1.25rem;">
+          <div class="box stat cyan"><div class="k">전체 예식</div><div class="v">${d.weddings}건</div></div>
+          <div class="box stat pink" style="margin-top: 0;"><div class="k">플래너 소개</div><div class="v">${d.weddings - d.direct}건</div></div>
+          <div class="box stat" style="margin-top: 0;"><div class="k">직접 가입</div><div class="v">${d.direct}건</div></div>
+          <div class="box stat yellow" style="margin-top: 0;"><div class="k">지급할 수수료</div><div class="v">${won(unpaid.reduce((s, m) => s + m.amount, 0))}</div></div>
+        </div>
+        <form id="fee" class="box">
+          <h2>소개 수수료</h2>
+          <label for="feeInput">건당 금액 (원) <span class="muted">바꾼 뒤 공개되는 청첩장부터 적용됩니다</span></label>
+          <div class="row"><input class="grow" id="feeInput" name="fee" type="number" min="0" step="1000" value="${d.fee}" required><button class="btn" type="submit">저장</button></div>
+        </form>
+        <div class="box">
+          <h2>지급 대기</h2>
+          ${unpaid.length ? `<div class="table-wrap"><table>
+            <thead><tr><th>플래너</th><th>적립 월</th><th class="r">건수</th><th class="r">금액</th><th></th></tr></thead>
+            <tbody>${unpaid.map((m) => `<tr>
+              <td><strong>${esc(m.p.company)}</strong> ${esc(m.p.name)}<div class="muted">${esc(m.p.phone)}</div></td>
+              <td>${esc(m.month)}</td><td class="r num">${m.count}건</td><td class="r num"><strong>${won(m.amount)}</strong></td>
+              <td class="r"><button class="btn sm green" type="button" data-pay="${m.p.id}" data-month="${esc(m.month)}">지급 완료 처리</button></td>
+            </tr>`).join('')}</tbody></table></div>` : '<p class="empty">지급할 수수료가 없습니다.</p>'}
+        </div>
+        <div class="box">
+          <h2>플래너 ${d.planners.length}명</h2>
+          ${d.planners.length ? `<div class="table-wrap"><table>
+            <thead><tr><th>업체 · 이름</th><th>소개 코드</th><th class="r">소개</th><th class="r">공개</th><th class="r">누적 수수료</th></tr></thead>
+            <tbody>${d.planners.map((p) => `<tr>
+              <td><strong>${esc(p.company)}</strong> ${esc(p.name)}</td><td>${esc(p.code)}</td>
+              <td class="r num">${p.couples}쌍</td><td class="r num">${p.published}쌍</td>
+              <td class="r num">${won(p.months.reduce((s, m) => s + m.amount, 0))}</td>
+            </tr>`).join('')}</tbody></table></div>` : '<p class="empty">등록한 플래너가 없습니다.</p>'}
+        </div>`;
+    }
+
+    const guard = (fn) => fn().catch((err) => toast(err.message));
+    document.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-pay]');
+      if (b && confirm('실제로 송금한 뒤 눌러 주세요. 지급 완료로 처리할까요?')) {
+        guard(async () => { await call('POST', 'api/admin/payouts', { plannerId: b.dataset.pay, month: b.dataset.month }); await load(); toast('지급 완료로 처리했습니다'); });
+      }
+    });
+    document.addEventListener('submit', (e) => {
+      e.preventDefault();
+      guard(async () => { await call('PUT', 'api/admin/settings', formData(e.target)); await load(); toast('수수료를 저장했습니다'); });
+    });
+    load().then(() => history.replaceState(null, '', 'admin.html#t=' + token))
+      .catch((err) => { view.innerHTML = `<div class="box" style="margin-top: 2rem;"><h2>열 수 없습니다</h2><p style="font-weight: 700;">${esc(err.message)}</p></div>`; });
+  </script>
+</body>
+</html>

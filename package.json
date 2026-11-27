@@ -7,7 +7,7 @@
   "packageManager": "pnpm@11.19.0",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "test": "node --test --test-concurrency=1 tests/backend.test.mjs tests/canonical-consult.test.mjs tests/analytics.test.mjs tests/analytics-client.test.mjs tests/analytics-view.test.mjs tests/quote-simple.test.mjs tests/quote-intents.test.mjs tests/quote-client.test.mjs tests/quote-view.test.mjs tests/build-assets.test.mjs tests/catalog.test.mjs tests/catalog-tools.test.mjs tests/chat.test.mjs tests/access.test.mjs tests/password-login.test.mjs tests/product-pages.test.mjs tests/report.test.mjs",
+    "test": "node --test --test-concurrency=1 tests/backend.test.mjs tests/canonical-consult.test.mjs tests/analytics.test.mjs tests/analytics-client.test.mjs tests/analytics-view.test.mjs tests/quote-simple.test.mjs tests/quote-intents.test.mjs tests/quote-client.test.mjs tests/quote-view.test.mjs tests/build-assets.test.mjs tests/catalog.test.mjs tests/catalog-tools.test.mjs tests/chat.test.mjs tests/access.test.mjs tests/password-login.test.mjs tests/product-pages.test.mjs tests/report.test.mjs tests/wedding.test.mjs",
     "db:generate": "drizzle-kit generate",
     "dev": "node preview-server.mjs",
     "start": "node server.mjs",

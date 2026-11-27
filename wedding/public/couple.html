@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="referrer" content="no-referrer">
+  <title>우리 예식 관리</title>
+  <link rel="stylesheet" href="common.css">
+  <style>
+    .acct { border: var(--line); padding: 0.75rem; margin-bottom: 0.75rem; background: #fff; }
+    .photo { width: 100%; max-height: 320px; object-fit: cover; border: var(--line); display: block; margin-bottom: 0.75rem; }
+    .thanks-item { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; padding: 0.75rem 0; border-top: 2px solid #000; }
+    .thanks-item:first-child { border-top: 0; }
+    .bar { height: 22px; border: var(--line); background: #fff; }
+    .bar > div { height: 100%; background: var(--green); border-right: var(--line); }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="top-in">
+      <h1 id="title">불러오는 중</h1>
+      <p class="muted" id="sub"></p>
+      <nav class="tabs" id="tabs" aria-label="메뉴"></nav>
+    </div>
+  </header>
+  <main class="wrap" id="view"></main>
+  <dialog id="dlg"></dialog>
+
+  <script src="common.js"></script>
+  <script>
+    const token = hashToken('wr_couple');
+    const TABS = [['home', '개요'], ['invite', '청첩장'], ['guests', '하객 명단'], ['ledger', '장부'], ['thanks', '감사 인사'], ['settle', '정산']];
+    const state = { w: null, tab: 'home', guestSide: 'all', q: '', thanksAll: false, tier: 0, stale: false };
+    const view = $('#view');
+    const dlg = $('#dlg');
+    const sum = (arr, f) => arr.reduce((s, x) => s + (f(x) || 0), 0);
+    const call = (method, url, body) => api(method, url, body, token);
+    const inviteUrl = () => abs("i.html?s=" + state.w.slug);
+    const deskUrl = () => abs("desk.html#t=" + state.w.deskToken);
+
+    async function load() {
+      const { role, wedding } = await call('GET', 'api/w');
+      if (role !== 'admin') { location.replace('desk.html#t=' + token); return; }
+      state.w = wedding;
+    }
+
+    function editing() {
+      const a = document.activeElement;
+      return dlg.open || state.tab === 'invite' || (a && view.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.type !== 'checkbox');
+    }
+
+    async function refresh(force) {
+      await load();
+      if (!force && editing()) { state.stale = true; return; }
+      render();
+    }
+
+    function render() {
+      state.stale = false;
+      const w = state.w;
+      document.title = `${w.groom} · ${w.bride} 예식 관리`;
+      $('#title').textContent = `${w.groom} · ${w.bride}`;
+      $('#sub').textContent = [fmtDate(w.date), fmtTime(w.time), w.venue].filter(Boolean).join(' · ');
+      $('#tabs').innerHTML = TABS.map(([id, label]) => `<button type="button" data-act="tab" data-id="${id}" aria-current="${state.tab === id}">${label}</button>`).join('');
+      const draft = $('#tpl')?.value;
+      view.innerHTML = views[state.tab]();
+      if (state.tab === 'ledger') renderLedgerRows();
+      if (state.tab === 'invite') renderAccounts(state.w.accounts);
+      if (state.tab === 'thanks' && draft !== undefined) $('#tpl').value = draft;
+    }
+
+    const stat = (k, v, color) => `<div class="box stat ${color}"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+    const sideOptions = (v) => `<option value="groom"${v !== 'bride' ? ' selected' : ''}>신랑 측</option><option value="bride"${v === 'bride' ? ' selected' : ''}>신부 측</option>`;
+
+    const views = {
+      home() {
+        const w = state.w;
+        const heads = sum(w.guests.filter((g) => g.attending === 'yes'), (g) => g.count);
+        const thanked = w.entries.filter((e) => e.thanked).length;
+        return `
+          <div class="grid4" style="margin-bottom: 1.25rem;">
+            ${stat('참석 응답', heads + '명', 'cyan')}
+            ${stat('접수', w.entries.length + '건', 'pink')}
+            ${stat('축의금 합계', won(sum(w.entries, (e) => e.amount)), 'yellow')}
+            ${stat('감사 인사', `${thanked} / ${w.entries.length}`, 'green')}
+          </div>
+          <div class="box">
+            <h2>모바일 청첩장 <span class="tag ${w.published ? 'green' : ''}">${w.published ? '공개 중' : '비공개'}</span></h2>
+            <p style="font-weight: 700; margin-bottom: 0.75rem;">${w.published ? '이 주소를 하객에게 보내세요. 참석 응답이 하객 명단에 자동으로 들어옵니다.' : '청첩장 탭에서 내용을 채우고 공개하면 이 주소로 열립니다.'}</p>
+            <div class="linkbox">
+              <input type="text" readonly value="${esc(inviteUrl())}" aria-label="청첩장 주소">
+              <button class="btn" type="button" data-act="copy" data-text="${esc(inviteUrl())}">주소 복사</button>
+              <a class="btn" href="i.html?s=${w.slug}" target="_blank" rel="noopener">${w.published ? '열기' : '미리보기'}</a>
+            </div>
+          </div>
+          <div class="box">
+            <h2>접수대 링크</h2>
+            <p style="font-weight: 700; margin-bottom: 0.75rem;">예식 당일 접수를 맡은 분들에게 보내세요. 여러 기기에서 동시에 입력해도 한 장부에 바로 합쳐집니다. 이 링크로는 접수만 할 수 있고 청첩장이나 정산은 볼 수 없습니다.</p>
+            <div class="linkbox">
+              <input type="text" readonly value="${esc(deskUrl())}" aria-label="접수대 주소">
+              <button class="btn" type="button" data-act="copy" data-text="${esc(deskUrl())}">주소 복사</button>
+              <a class="btn" href="${esc(deskUrl())}" target="_blank" rel="noopener">열기</a>
+            </div>
+          </div>
+          <div class="box yellow">
+            <h2>관리 주소 보관</h2>
+            <p style="font-weight: 700; margin-bottom: 0.75rem;">지금 보고 있는 이 주소가 두 분만의 관리 열쇠입니다. 주소를 아는 사람은 장부를 볼 수 있으니 두 분만 보관하세요.</p>
+            <button class="btn" type="button" data-act="copy" data-text="${esc(abs('couple.html#t=' + token))}">관리 주소 복사</button>
+          </div>
+          ${w.planner ? `<p style="margin-top: 1.25rem; font-weight: 800;">소개 플래너: ${esc(w.planner.company)} ${esc(w.planner.name)}</p>` : ''}`;
+      },
+
+      invite() {
+        const w = state.w;
+        const f = (name, label, type = 'text', extra = '') => `<div class="field"><label for="f_${name}">${label}</label><input id="f_${name}" name="${name}" type="${type}" value="${esc(w[name])}" ${extra}></div>`;
+        return `
+          <form id="inviteForm">
+            <div class="box">
+              <h2>기본 정보</h2>
+              <div class="grid2">${f('groom', '신랑 이름', 'text', 'maxlength="20" required')}${f('bride', '신부 이름', 'text', 'maxlength="20" required')}</div>
+              <div class="grid2">${f('groomParents', '신랑 혼주', 'text', 'maxlength="60" placeholder="예: 김철수 · 박영희의 장남"')}${f('brideParents', '신부 혼주', 'text', 'maxlength="60" placeholder="예: 이민호 · 최수진의 차녀"')}</div>
+              <div class="grid2">${f('date', '예식일', 'date')}${f('time', '예식 시간', 'time')}</div>
+              ${f('venue', '예식장', 'text', 'maxlength="60" placeholder="예: 그랜드웨딩홀 3층 루비홀"')}
+              ${f('address', '주소', 'text', 'maxlength="120"')}
+              <div class="field"><label for="f_greeting">인사말</label><textarea id="f_greeting" name="greeting" maxlength="1000" placeholder="하객에게 전할 인사말을 적어 주세요">${esc(w.greeting)}</textarea></div>
+            </div>
+            <div class="box">
+              <h2>대표 사진</h2>
+              <div id="photoBox">${w.photo ? `<img class="photo" src="${esc(w.photo)}" alt="대표 사진">` : '<p style="font-weight: 700; margin-bottom: 0.75rem;">아직 사진이 없습니다.</p>'}</div>
+              <label class="btn" for="photoFile" style="display: inline-flex;">사진 고르기</label>
+              <input id="photoFile" type="file" accept="image/*" hidden>
+            </div>
+            <div class="box">
+              <h2>마음 전하실 곳</h2>
+              <p style="font-weight: 700; margin-bottom: 0.75rem;">청첩장에 계좌번호와 복사 버튼, 토스 송금 버튼이 표시됩니다. 송금 내역은 은행 앱에서 확인한 뒤 장부 탭에서 기록하세요.</p>
+              <div id="accts"></div>
+              <button class="btn sm" type="button" data-act="acctAdd">계좌 추가</button>
+              <label class="check" style="margin-top: 1rem;"><input type="checkbox" name="showAccounts" ${w.showAccounts ? 'checked' : ''}> 청첩장에 계좌 표시</label>
+            </div>
+            <div class="box ${w.published ? 'green' : 'yellow'}">
+              <h2>${w.published ? '공개 중인 청첩장입니다' : '아직 비공개입니다'}</h2>
+              <div class="row">
+                <button class="btn" type="submit">저장</button>
+                <button class="btn" type="button" data-act="publish">${w.published ? '비공개로 전환' : '저장하고 공개'}</button>
+                <a class="btn" href="i.html?s=${w.slug}" target="_blank" rel="noopener">${w.published ? '청첩장 열기' : '미리보기'}</a>
+              </div>
+            </div>
+          </form>`;
+      },
+
+      guests() {
+        const w = state.w;
+        const list = w.guests.filter((g) => state.guestSide === 'all' || g.side === state.guestSide)
+          .sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+        const yes = w.guests.filter((g) => g.attending === 'yes');
+        const checkedIn = new Set(w.entries.map((e) => e.guestId).filter(Boolean));
+        const seg = (id, label) => `<button type="button" data-act="guestSide" data-id="${id}" aria-pressed="${state.guestSide === id}">${label}</button>`;
+        return `
+          <div class="grid4" style="margin-bottom: 1.25rem;">
+            ${stat('명단', w.guests.length + '명', '')}
+            ${stat('참석 예정', sum(yes, (g) => g.count) + '명', 'cyan')}
+            ${stat('식사 예정', sum(yes.filter((g) => g.meal), (g) => g.count) + '명', 'yellow')}
+            ${stat('불참', w.guests.filter((g) => g.attending === 'no').length + '명', '')}
+          </div>
+          <form id="guestForm" class="box">
+            <h2>하객 직접 추가</h2>
+            <div class="row">
+              <div class="grow"><label for="g_name">이름</label><input id="g_name" name="name" type="text" maxlength="30" required autocomplete="off"></div>
+              <div class="grow"><label for="g_side">구분</label><select id="g_side" name="side">${sideOptions()}</select></div>
+              <div class="grow"><label for="g_group">관계</label><input id="g_group" name="group" type="text" maxlength="20" placeholder="예: 대학 동기"></div>
+              <div class="grow"><label for="g_phone">연락처</label><input id="g_phone" name="phone" type="tel" maxlength="20"></div>
+            </div>
+            <button class="btn yellow" type="submit" style="margin-top: 1rem;">추가</button>
+          </form>
+          <div class="box">
+            <div class="row" style="justify-content: space-between; margin-bottom: 1rem;">
+              <h2 style="margin: 0;">명단</h2>
+              <div class="seg" style="min-width: 240px;">${seg('all', '전체')}${seg('groom', '신랑 측')}${seg('bride', '신부 측')}</div>
+            </div>
+            ${list.length ? `<div class="table-wrap"><table>
+              <thead><tr><th>이름</th><th>구분</th><th>참석</th><th class="r">인원</th><th>식사</th><th>메시지</th><th></th></tr></thead>
+              <tbody>${list.map((g) => `<tr>
+                <td>${esc(g.name)} ${g.source === 'rsvp' ? '<span class="tag cyan">청첩장 응답</span>' : ''} ${checkedIn.has(g.id) ? '<span class="tag green">접수 완료</span>' : ''}${g.group ? `<div class="muted">${esc(g.group)}</div>` : ''}</td>
+                <td>${sideName(g.side)}</td>
+                <td><select data-change="attending" data-id="${g.id}" aria-label="${esc(g.name)} 참석 여부" style="min-height: 36px; padding: 0.2rem 0.4rem; width: auto;">
+                  ${[['unknown', '미정'], ['yes', '참석'], ['no', '불참']].map(([v, l]) => `<option value="${v}"${g.attending === v ? ' selected' : ''}>${l}</option>`).join('')}</select></td>
+                <td class="r num">${g.count}</td>
+                <td>${g.attending === 'yes' ? (g.meal ? '식사' : '안 함') : ''}</td>
+                <td style="max-width: 260px;">${esc(g.message)}</td>
+                <td class="r"><button class="btn sm" type="button" data-act="guestDel" data-id="${g.id}" aria-label="${esc(g.name)} 삭제">삭제</button></td>
+              </tr>`).join('')}</tbody></table></div>` : '<p class="empty">아직 명단이 없습니다. 청첩장을 공개하면 참석 응답이 여기에 쌓입니다.</p>'}
+          </div>`;
+      },
+
+      ledger() {
+        return `
+          <details class="box" id="addBox" ${state.addOpen ? 'open' : ''}>
+            <summary style="font-weight: 900; font-size: 1.125rem; cursor: pointer;">입금·봉투 직접 기록하기</summary>
+            <form id="entryForm" style="margin-top: 1rem;">
+              <p style="font-weight: 700; margin-bottom: 0.75rem;">계좌로 받은 축의금은 은행 앱에서 확인한 뒤 여기에 적어 두면 현장 접수분과 한 장부로 합쳐집니다.</p>
+              <div class="row">
+                <div class="grow"><label for="e_name">보낸 분</label><input id="e_name" name="guestName" type="text" maxlength="30" required autocomplete="off"></div>
+                <div class="grow"><label for="e_amount">금액 (원)</label><input id="e_amount" name="amount" type="number" min="0" step="1000" inputmode="numeric" required></div>
+                <div class="grow"><label for="e_side">구분</label><select id="e_side" name="side">${sideOptions()}</select></div>
+                <div class="grow"><label for="e_method">방식</label><select id="e_method" name="method"><option value="transfer">계좌이체</option><option value="cash">현금</option></select></div>
+              </div>
+              <div class="field" style="margin-top: 0.75rem;"><label for="e_memo">메모</label><input id="e_memo" name="memo" type="text" maxlength="100"></div>
+              <button class="btn yellow" type="submit">장부에 기록</button>
+            </form>
+          </details>
+          <div class="box">
+            <div class="row" style="margin-bottom: 1rem;">
+              <div class="grow"><label for="q">이름 또는 봉투번호 검색</label><input id="q" type="search" value="${esc(state.q)}" placeholder="받은 금액을 나중에 찾아볼 때도 여기서 검색하세요"></div>
+              <button class="btn" type="button" data-act="csv" style="align-self: flex-end;">엑셀용 파일 받기</button>
+            </div>
+            <div id="ledgerRows"></div>
+          </div>`;
+      },
+
+      thanks() {
+        const w = state.w;
+        const done = w.entries.filter((e) => e.thanked).length;
+        const list = w.entries.filter((e) => (state.thanksAll || !e.thanked) && e.amount >= state.tier)
+          .sort((a, b) => b.amount - a.amount);
+        const pct = w.entries.length ? Math.round((done / w.entries.length) * 100) : 0;
+        return `
+          <div class="box">
+            <h2>감사 인사 진행 <span class="num">${done} / ${w.entries.length}</span></h2>
+            <div class="bar" role="img" aria-label="감사 인사 ${pct}% 완료"><div style="width: ${pct}%; ${pct ? '' : 'border: 0;'}"></div></div>
+          </div>
+          <form id="tplForm" class="box">
+            <h2>인사 문구</h2>
+            <label for="tpl">{이름} 자리에 하객 이름이 들어갑니다</label>
+            <textarea id="tpl" name="thanksTemplate" maxlength="500">${esc(w.thanksTemplate)}</textarea>
+            <button class="btn" type="submit" style="margin-top: 0.75rem;">문구 저장</button>
+          </form>
+          <div class="box">
+            <div class="row" style="margin-bottom: 0.5rem;">
+              <div class="seg grow">
+                <button type="button" data-act="thanksAll" data-id="0" aria-pressed="${!state.thanksAll}">아직 안 한 분</button>
+                <button type="button" data-act="thanksAll" data-id="1" aria-pressed="${state.thanksAll}">전체</button>
+              </div>
+              <select data-change="tier" aria-label="금액 기준" style="width: auto;">
+                ${[[0, '전체 금액'], [100000, '10만원 이상'], [300000, '30만원 이상'], [500000, '50만원 이상']].map(([v, l]) => `<option value="${v}"${state.tier === v ? ' selected' : ''}>${l}</option>`).join('')}
+              </select>
+            </div>
+            ${list.length ? list.map((e) => `<div class="thanks-item">
+              <label class="check" style="flex: 1 1 200px;"><input type="checkbox" data-change="thanked" data-id="${e.id}" ${e.thanked ? 'checked' : ''}>
+                <span>${esc(e.guestName)} <span class="tag">${sideName(e.side)}</span><span class="muted num" style="display: block;">${won(e.amount)}</span></span></label>
+              <button class="btn sm" type="button" data-act="copyThanks" data-id="${e.id}">문구 복사</button>
+            </div>`).join('') : `<p class="empty">${w.entries.length ? '조건에 맞는 분이 없습니다.' : '접수 내역이 생기면 여기에 표시됩니다.'}</p>`}
+          </div>`;
+      },
+
+      settle() {
+        const w = state.w;
+        const by = (f) => w.entries.filter(f);
+        const row = (label, list) => `<tr><td>${label}</td><td class="r num">${list.length}건</td><td class="r num">${won(sum(list, (e) => e.amount))}</td></tr>`;
+        const yes = w.guests.filter((g) => g.attending === 'yes' && g.meal);
+        return `
+          <div class="grid4" style="margin-bottom: 1.25rem;">
+            ${stat('축의금 합계', won(sum(w.entries, (e) => e.amount)), 'yellow')}
+            ${stat('현금', won(sum(by((e) => e.method === 'cash'), (e) => e.amount)), 'green')}
+            ${stat('계좌이체', won(sum(by((e) => e.method === 'transfer'), (e) => e.amount)), 'cyan')}
+            ${stat('발급 식권', sum(w.entries, (e) => e.tickets) + '장', 'pink')}
+          </div>
+          <div class="box">
+            <h2>구분별 정산</h2>
+            <div class="table-wrap"><table>
+              <thead><tr><th>구분</th><th class="r">건수</th><th class="r">금액</th></tr></thead>
+              <tbody>
+                ${row('신랑 측 현금', by((e) => e.side === 'groom' && e.method === 'cash'))}
+                ${row('신랑 측 계좌', by((e) => e.side === 'groom' && e.method === 'transfer'))}
+                ${row('신부 측 현금', by((e) => e.side === 'bride' && e.method === 'cash'))}
+                ${row('신부 측 계좌', by((e) => e.side === 'bride' && e.method === 'transfer'))}
+                ${row('<strong>합계</strong>', w.entries)}
+              </tbody></table></div>
+            <p class="muted" style="margin-top: 0.75rem;">현금 합계는 접수대에서 실제로 센 금액과 맞춰 보세요.</p>
+          </div>
+          <div class="box">
+            <h2>식권</h2>
+            <p style="font-weight: 700;">식사 예정 응답 ${sum(yes, (g) => g.count)}명 · 실제 발급 ${sum(w.entries, (e) => e.tickets)}장</p>
+          </div>`;
+      },
+    };
+
+    function renderLedgerRows() {
+      const q = state.q.trim();
+      const list = state.w.entries.filter((e) => !q || e.guestName.includes(q) || e.envelopeNumber.includes(q))
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      $('#ledgerRows').innerHTML = list.length ? `<div class="table-wrap"><table>
+        <thead><tr><th>번호</th><th>하객명</th><th class="r">금액</th><th>방식</th><th class="r">식권</th><th>메모</th><th></th></tr></thead>
+        <tbody>${list.map((e) => `<tr>
+          <td><strong>${esc(e.envelopeNumber)}</strong></td>
+          <td>${esc(e.guestName)}</td>
+          <td class="r num"><strong>${won(e.amount)}</strong></td>
+          <td>${e.method === 'cash' ? '현금' : '계좌'}</td>
+          <td class="r num">${e.tickets}</td>
+          <td style="max-width: 220px;">${esc(e.memo)}${e.by ? `<div class="muted">접수: ${esc(e.by)}</div>` : ''}</td>
+          <td class="r"><button class="btn sm" type="button" data-act="entryEdit" data-id="${e.id}" aria-label="${esc(e.guestName)} 수정">수정</button></td>
+        </tr>`).join('')}</tbody></table></div>
+        <p style="margin-top: 1rem; font-weight: 900; font-size: 1.125rem;" class="num">${q ? '검색 결과 ' : ''}${list.length}건 · ${won(sum(list, (e) => e.amount))}</p>`
+        : `<p class="empty">${q ? '검색 결과가 없습니다.' : '아직 접수 내역이 없습니다.'}</p>`;
+    }
+
+    function readAccounts() {
+      return $$('.acct', view).map((el) => ({
+        side: $('[data-k="side"]', el).value, label: $('[data-k="label"]', el).value, bank: $('[data-k="bank"]', el).value,
+        number: $('[data-k="number"]', el).value, holder: $('[data-k="holder"]', el).value, kakaoLink: $('[data-k="kakaoLink"]', el).value,
+      }));
+    }
+    function renderAccounts(list) {
+      $('#accts').innerHTML = list.map((a, i) => `<div class="acct">
+        <div class="row">
+          <div class="grow"><label>구분</label><select data-k="side">${sideOptions(a.side)}</select></div>
+          <div class="grow"><label>표시 이름</label><input data-k="label" type="text" maxlength="20" value="${esc(a.label)}" placeholder="예: 신랑 아버지"></div>
+          <div class="grow"><label>은행</label><input data-k="bank" type="text" maxlength="20" value="${esc(a.bank)}"></div>
+        </div>
+        <div class="row" style="margin-top: 0.5rem;">
+          <div class="grow"><label>계좌번호</label><input data-k="number" type="text" inputmode="numeric" maxlength="30" value="${esc(a.number)}"></div>
+          <div class="grow"><label>예금주</label><input data-k="holder" type="text" maxlength="20" value="${esc(a.holder)}"></div>
+        </div>
+        <div style="margin-top: 0.5rem;"><label>카카오페이 송금 링크 <span class="muted">(선택)</span></label><input data-k="kakaoLink" type="url" maxlength="200" value="${esc(a.kakaoLink)}" placeholder="https://qr.kakaopay.com/..."></div>
+        <button class="btn sm" type="button" data-act="acctDel" data-id="${i}" style="margin-top: 0.75rem;">이 계좌 삭제</button>
+      </div>`).join('') || '<p style="font-weight: 700; margin-bottom: 0.75rem;">등록된 계좌가 없습니다.</p>';
+    }
+
+    async function saveInvite(published) {
+      const form = $('#inviteForm');
+      if (!form.reportValidity()) return;
+      const body = { ...formData(form), accounts: readAccounts() };
+      if (published !== undefined) {
+        if (published && (!body.date || !body.venue)) { toast('예식일과 예식장을 입력한 뒤 공개해 주세요'); return; }
+        body.published = published;
+      }
+      await call('PUT', 'api/w', body);
+      await refresh(true);
+      toast(published === true ? '청첩장을 공개했습니다' : published === false ? '비공개로 바꿨습니다' : '저장했습니다');
+    }
+
+    async function fileToJpeg(file) {
+      const img = await createImageBitmap(file);
+      const s = Math.min(1, 1400 / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * s);
+      c.height = Math.round(img.height * s);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      return c.toDataURL('image/jpeg', 0.85);
+    }
+
+    function openEntry(id) {
+      const e = state.w.entries.find((x) => x.id === id);
+      dlg.innerHTML = `<form id="editForm" data-id="${e.id}">
+        <h2>${esc(e.envelopeNumber)} 수정</h2>
+        <div class="field"><label for="d_name">하객명</label><input id="d_name" name="guestName" type="text" maxlength="30" required value="${esc(e.guestName)}"></div>
+        <div class="grid2">
+          <div class="field"><label for="d_amount">금액 (원)</label><input id="d_amount" name="amount" type="number" min="0" step="1000" required value="${e.amount}"></div>
+          <div class="field"><label for="d_tickets">식권</label><input id="d_tickets" name="tickets" type="number" min="0" max="99" value="${e.tickets}"></div>
+        </div>
+        <div class="field"><label for="d_memo">메모</label><input id="d_memo" name="memo" type="text" maxlength="100" value="${esc(e.memo)}"></div>
+        <div class="row">
+          <button class="btn yellow" type="submit">저장</button>
+          <button class="btn" type="button" data-act="dlgClose">닫기</button>
+          <button class="btn" type="button" data-act="entryDel" data-id="${e.id}" style="margin-left: auto;">삭제</button>
+        </div>
+      </form>`;
+      dlg.showModal();
+    }
+
+    function downloadCsv() {
+      const cell = (v) => {
+        let s = String(v ?? '');
+        if (/^[=+\-@]/.test(s)) s = "'" + s;
+        return `"${s.replace(/"/g, '""')}"`;
+      };
+      const rows = [['번호', '구분', '하객명', '금액', '방식', '식권', '메모', '감사 인사', '접수 시각']];
+      for (const e of state.w.entries) {
+        rows.push([e.envelopeNumber, sideName(e.side), e.guestName, e.amount, e.method === 'cash' ? '현금' : '계좌이체', e.tickets, e.memo, e.thanked ? '완료' : '', new Date(e.createdAt).toLocaleString('ko-KR')]);
+      }
+      const blob = new Blob(['﻿' + rows.map((r) => r.map(cell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${state.w.groom}_${state.w.bride}_축의금장부.csv`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    const acts = {
+      tab: (id) => { state.tab = id; render(); window.scrollTo(0, 0); },
+      copy: (_, el) => copyText(el.dataset.text, '주소를 복사했습니다'),
+      guestSide: (id) => { state.guestSide = id; render(); },
+      guestDel: async (id) => { if (confirm('명단에서 삭제할까요?')) { await call('DELETE', 'api/w/guests/' + id); await refresh(true); } },
+      acctAdd: () => renderAccounts([...readAccounts(), { side: 'groom', label: '', bank: '', number: '', holder: '', kakaoLink: '' }]),
+      acctDel: (id) => renderAccounts(readAccounts().filter((_, i) => i !== Number(id))),
+      publish: () => saveInvite(!state.w.published),
+      csv: downloadCsv,
+      entryEdit: openEntry,
+      entryDel: async (id) => { if (confirm('이 접수 내역을 삭제할까요? 되돌릴 수 없습니다.')) { await call('DELETE', 'api/w/entries/' + id); dlg.close(); await refresh(true); toast('삭제했습니다'); } },
+      dlgClose: () => dlg.close(),
+      thanksAll: (id) => { state.thanksAll = id === '1'; render(); },
+      copyThanks: (id) => {
+        const e = state.w.entries.find((x) => x.id === id);
+        copyText(state.w.thanksTemplate.replaceAll('{이름}', e.guestName), `${e.guestName}님께 보낼 문구를 복사했습니다`);
+      },
+    };
+
+    const changes = {
+      attending: async (id, el) => { await call('PUT', 'api/w/guests/' + id, { attending: el.value }); await refresh(true); },
+      tier: (_, el) => { state.tier = Number(el.value); render(); },
+      thanked: async (id, el) => { await call('PUT', 'api/w/entries/' + id, { thanked: el.checked }); await refresh(true); },
+    };
+
+    const submits = {
+      inviteForm: () => saveInvite(),
+      guestForm: async (form) => { await call('POST', 'api/w/guests', formData(form)); await refresh(true); toast('명단에 추가했습니다'); $('#g_name').focus(); },
+      entryForm: async (form) => { await call('POST', 'api/w/entries', formData(form)); await refresh(true); toast('장부에 기록했습니다'); },
+      tplForm: async (form) => { await call('PUT', 'api/w', formData(form)); await refresh(true); toast('문구를 저장했습니다'); },
+      editForm: async (form) => { await call('PUT', 'api/w/entries/' + form.dataset.id, formData(form)); dlg.close(); await refresh(true); toast('수정했습니다'); },
+    };
+
+    const guard = (fn) => async (...args) => { try { await fn(...args); } catch (err) { toast(err.message); } };
+
+    document.addEventListener('click', (e) => {
+      const el = e.target.closest('[data-act]');
+      if (el && acts[el.dataset.act]) guard(acts[el.dataset.act])(el.dataset.id, el);
+    });
+    document.addEventListener('change', (e) => {
+      const el = e.target;
+      if (el.id === 'photoFile' && el.files[0]) {
+        guard(async () => {
+          const { photo } = await call('POST', 'api/w/photo', { dataUrl: await fileToJpeg(el.files[0]) });
+          state.w.photo = photo;
+          $('#photoBox').innerHTML = `<img class="photo" src="${esc(photo)}" alt="대표 사진">`;
+          toast('사진을 올렸습니다');
+        })();
+      } else if (el.dataset.change && changes[el.dataset.change]) guard(changes[el.dataset.change])(el.dataset.id, el);
+    });
+    document.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (submits[e.target.id]) guard(submits[e.target.id])(e.target);
+    });
+    document.addEventListener('input', (e) => {
+      if (e.target.id === 'q') { state.q = e.target.value; renderLedgerRows(); }
+    });
+    document.addEventListener('focusout', () => setTimeout(() => { if (state.stale && !editing()) render(); }, 50));
+    document.addEventListener('toggle', (e) => { if (e.target.id === 'addBox') state.addOpen = e.target.open; }, true);
+    dlg.addEventListener('close',() => { if (state.stale) render(); });
+
+    (async () => {
+      if (!token) { location.replace('./'); return; }
+      try {
+        await load();
+        if (!state.w) return;
+        history.replaceState(null, '', 'couple.html#t=' + token);
+        render();
+        watchVersion(token, () => state.w.v, () => refresh().catch(() => {}));
+      } catch (err) {
+        $('#title').textContent = '예식을 찾을 수 없습니다';
+        view.innerHTML = `<div class="box"><p style="font-weight: 800; margin-bottom: 1rem;">${esc(err.message)}</p><a class="btn" href="./">처음으로</a></div>`;
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="referrer" content="no-referrer">
+  <title>접수대</title>
+  <link rel="stylesheet" href="common.css">
+  <style>
+    .split { display: grid; grid-template-columns: 3fr 2fr; gap: 1.25rem; align-items: start; }
+    @media (max-width: 860px) { .split { grid-template-columns: 1fr; } }
+    .quick { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem; }
+    .quick .btn { padding: 0.4rem 0.2rem; min-height: 52px; }
+    @media (max-width: 420px) { .quick { grid-template-columns: repeat(3, 1fr); } }
+    #suggest { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+    #amountText { font-weight: 900; font-size: 1.5rem; margin-top: 0.35rem; }
+    #done { margin-bottom: 1.25rem; }
+    #done .no { font-size: 2rem; font-weight: 900; letter-spacing: -0.02em; }
+    .item { display: flex; gap: 0.75rem; align-items: center; padding: 0.6rem 0; border-top: 2px solid #000; }
+    .item:first-child { border-top: 0; }
+    .item .who { flex: 1; min-width: 0; font-weight: 800; }
+    .live { display: inline-block; width: 12px; height: 12px; background: var(--green); border: 2px solid #000; margin-right: 0.3rem; }
+    .live.off { background: #fff; }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="top-in" style="padding-bottom: 0.75rem;">
+      <div class="row" style="justify-content: space-between;">
+        <div>
+          <h1 id="title">불러오는 중</h1>
+          <p class="muted"><span class="live" id="live"></span><span id="liveText">실시간 연결됨</span> · 접수대</p>
+        </div>
+        <div class="seg" id="sideSeg" style="min-width: 220px;">
+          <button type="button" data-act="side" data-id="groom">신랑 측</button>
+          <button type="button" data-act="side" data-id="bride">신부 측</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="split">
+      <div>
+        <div class="box green" id="done" hidden aria-live="polite"></div>
+        <form class="box" id="form" style="margin-top: 0;">
+          <h2 id="formTitle">접수</h2>
+          <div class="field">
+            <label for="name">하객명</label>
+            <input id="name" name="guestName" type="text" maxlength="30" required autocomplete="off" placeholder="이름을 입력하면 청첩장 응답 명단에서 찾아 드립니다">
+            <div id="suggest"></div>
+          </div>
+          <div class="field">
+            <label>빠른 금액 <span class="muted">(누를 때마다 더해집니다)</span></label>
+            <div class="quick">
+              <button class="btn" type="button" data-act="add" data-id="50000">5만</button>
+              <button class="btn" type="button" data-act="add" data-id="100000">10만</button>
+              <button class="btn" type="button" data-act="add" data-id="200000">20만</button>
+              <button class="btn" type="button" data-act="add" data-id="300000">30만</button>
+              <button class="btn" type="button" data-act="add" data-id="500000">50만</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="amount">금액 (원)</label>
+            <div class="row">
+              <input class="grow" id="amount" name="amount" type="number" min="0" step="1000" inputmode="numeric" required value="0">
+              <button class="btn" type="button" data-act="clear">0으로</button>
+            </div>
+            <div id="amountText" class="num">0원</div>
+          </div>
+          <div class="grid2">
+            <div class="field">
+              <label>받은 방식</label>
+              <div class="seg" id="methodSeg">
+                <button type="button" data-act="method" data-id="cash" aria-pressed="true">현금</button>
+                <button type="button" data-act="method" data-id="transfer" aria-pressed="false">계좌</button>
+              </div>
+            </div>
+            <div class="field"><label for="tickets">식권 (장)</label><input id="tickets" name="tickets" type="number" min="0" max="99" inputmode="numeric" value="1"></div>
+          </div>
+          <div class="field"><label for="memo">메모 <span class="muted">(선택)</span></label><input id="memo" name="memo" type="text" maxlength="100"></div>
+          <button class="btn block yellow" type="submit" style="min-height: 60px; font-size: 1.25rem;">접수하기</button>
+        </form>
+        <div class="box">
+          <label for="by">접수 담당자 이름 <span class="muted">(장부에 누가 받았는지 남습니다)</span></label>
+          <input id="by" type="text" maxlength="20" autocomplete="off">
+        </div>
+      </div>
+      <div>
+        <div class="grid2" style="margin-bottom: 1.25rem;">
+          <div class="box stat cyan"><div class="k" id="cntLabel">접수</div><div class="v" id="cnt">0건</div></div>
+          <div class="box stat pink" style="margin-top: 0;"><div class="k">발급 식권</div><div class="v" id="tix">0장</div></div>
+        </div>
+        <div class="box">
+          <h2 id="recentTitle">최근 접수</h2>
+          <div id="recent"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <dialog id="dlg"></dialog>
+
+  <script src="common.js"></script>
+  <script>
+    const token = hashToken('wr_desk');
+    const state = { w: null, role: 'desk', side: localStorage.getItem('wr_desk_side') || 'groom', method: 'cash', guestId: null };
+    const call = (method, url, body) => api(method, url, body, token);
+    const dlg = $('#dlg');
+    const guard = (fn) => async (...a) => { try { await fn(...a); } catch (err) { toast(err.message); } };
+
+    async function load() {
+      const d = await call('GET', 'api/w');
+      state.w = d.wedding;
+      state.role = d.role;
+    }
+
+    function renderStatic() {
+      $('#title').textContent = `${state.w.groom} · ${state.w.bride}`;
+      document.title = `접수대 · ${state.w.groom} · ${state.w.bride}`;
+      for (const b of $$('#sideSeg button')) b.setAttribute('aria-pressed', b.dataset.id === state.side);
+      for (const b of $$('#methodSeg button')) b.setAttribute('aria-pressed', b.dataset.id === state.method);
+      $('#formTitle').textContent = `${sideName(state.side)} 측 접수`;
+      $('#recentTitle').textContent = `${sideName(state.side)} 측 최근 접수`;
+      $('#cntLabel').textContent = `${sideName(state.side)} 측 접수`;
+    }
+
+    function renderLists() {
+      const mine = state.w.entries.filter((e) => e.side === state.side).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      $('#cnt').textContent = mine.length + '건';
+      $('#tix').textContent = mine.reduce((s, e) => s + e.tickets, 0) + '장';
+      $('#recent').innerHTML = mine.length ? mine.slice(0, 20).map((e) => `<div class="item">
+        <div class="who"><span class="tag yellow">${esc(e.envelopeNumber)}</span> ${esc(e.guestName)}
+          <div class="muted num">${won(e.amount)} · ${e.method === 'cash' ? '현금' : '계좌'} · 식권 ${e.tickets}장${e.by ? ' · ' + esc(e.by) : ''}</div></div>
+        ${state.role === 'admin' || e.role === 'desk' ? `<button class="btn sm" type="button" data-act="edit" data-id="${e.id}" aria-label="${esc(e.guestName)} 수정">수정</button>` : ''}
+      </div>`).join('') : '<p class="empty">아직 접수 내역이 없습니다.</p>';
+      renderSuggest();
+    }
+
+    function renderSuggest() {
+      const q = $('#name').value.trim();
+      const checked = new Set(state.w.entries.map((e) => e.guestId).filter(Boolean));
+      const list = q ? state.w.guests.filter((g) => g.side === state.side && g.name.includes(q)).slice(0, 6) : [];
+      $('#suggest').innerHTML = list.map((g) => `<button class="btn sm ${state.guestId === g.id ? 'on' : ''}" type="button" data-act="pick" data-id="${g.id}">
+        ${esc(g.name)} · ${checked.has(g.id) ? '접수 완료' : g.attending === 'yes' ? `참석 ${g.count}명` : g.attending === 'no' ? '불참 응답' : '명단'}</button>`).join('');
+    }
+
+    const setAmount = (n) => { $('#amount').value = n; $('#amountText').textContent = won(n); };
+
+    function openEdit(id) {
+      const e = state.w.entries.find((x) => x.id === id);
+      dlg.innerHTML = `<form id="editForm" data-id="${e.id}">
+        <h2>${esc(e.envelopeNumber)} 수정</h2>
+        <div class="field"><label for="d_name">하객명</label><input id="d_name" name="guestName" type="text" maxlength="30" required value="${esc(e.guestName)}"></div>
+        <div class="grid2">
+          <div class="field"><label for="d_amount">금액 (원)</label><input id="d_amount" name="amount" type="number" min="0" step="1000" required value="${e.amount}"></div>
+          <div class="field"><label for="d_tickets">식권</label><input id="d_tickets" name="tickets" type="number" min="0" max="99" value="${e.tickets}"></div>
+        </div>
+        <div class="row">
+          <button class="btn yellow" type="submit">저장</button>
+          <button class="btn" type="button" data-act="close">닫기</button>
+          <button class="btn" type="button" data-act="del" data-id="${e.id}" style="margin-left: auto;">삭제</button>
+        </div>
+      </form>`;
+      dlg.showModal();
+    }
+
+    const acts = {
+      side: (id) => { state.side = id; state.guestId = null; localStorage.setItem('wr_desk_side', id); renderStatic(); renderLists(); },
+      method: (id) => { state.method = id; renderStatic(); },
+      add: (id) => setAmount((parseInt($('#amount').value, 10) || 0) + Number(id)),
+      clear: () => setAmount(0),
+      pick: (id) => {
+        const g = state.w.guests.find((x) => x.id === id);
+        state.guestId = g.id;
+        $('#name').value = g.name;
+        if (g.attending === 'yes') $('#tickets').value = g.meal ? g.count : 0;
+        renderSuggest();
+      },
+      edit: openEdit,
+      close: () => dlg.close(),
+      del: async (id) => {
+        if (!confirm('이 접수 내역을 삭제할까요? 되돌릴 수 없습니다.')) return;
+        await call('DELETE', 'api/w/entries/' + id);
+        dlg.close();
+        await load();
+        renderLists();
+        toast('삭제했습니다');
+      },
+    };
+
+    document.addEventListener('click', (e) => {
+      const el = e.target.closest('[data-act]');
+      if (el && acts[el.dataset.act]) guard(acts[el.dataset.act])(el.dataset.id);
+    });
+    $('#name').addEventListener('input', () => { state.guestId = null; renderSuggest(); });
+    $('#amount').addEventListener('input', (e) => { $('#amountText').textContent = won(parseInt(e.target.value, 10) || 0); });
+    $('#by').value = localStorage.getItem('wr_desk_by') || '';
+    $('#by').addEventListener('input', (e) => localStorage.setItem('wr_desk_by', e.target.value));
+
+    let sending = false;
+    document.addEventListener('submit', guard(async (ev) => {
+      ev.preventDefault();
+      const form = ev.target;
+      if (form.id === 'editForm') {
+        await call('PUT', 'api/w/entries/' + form.dataset.id, formData(form));
+        dlg.close();
+        await load();
+        renderLists();
+        toast('수정했습니다');
+        return;
+      }
+      if (sending) return;
+      sending = true;
+      try {
+        const e = await call('POST', 'api/w/entries', { ...formData(form), side: state.side, method: state.method, guestId: state.guestId, by: $('#by').value });
+        $('#done').hidden = false;
+        $('#done').innerHTML = `<div class="k" style="font-weight: 900;">접수 완료. 봉투에 이 번호를 적어 주세요</div>
+          <div class="no">${esc(e.envelopeNumber)}</div>
+          <div style="font-weight: 800;" class="num">${esc(e.guestName)} · ${won(e.amount)} · 식권 ${e.tickets}장</div>`;
+        form.reset();
+        state.guestId = null;
+        setAmount(0);
+        await load();
+        renderLists();
+        $('#name').focus();
+      } finally { sending = false; }
+    }));
+
+    function setLive(ok) {
+      $('#live').classList.toggle('off', !ok);
+      $('#liveText').textContent = ok ? '실시간 연결됨' : '연결 끊김. 다시 연결하는 중';
+    }
+
+    (async () => {
+      if (!token) { location.replace('./'); return; }
+      try {
+        await load();
+        history.replaceState(null, '', 'desk.html#t=' + token);
+        renderStatic();
+        renderLists();
+        setInterval(async () => {
+          if (document.hidden) return;
+          try {
+            const { v } = await call('GET', 'api/w/v');
+            setLive(true);
+            if (v !== state.w.v) { await load(); if (!dlg.open) renderLists(); }
+          } catch { setLive(false); }
+        }, 2000);
+      } catch (err) {
+        $('#title').textContent = '접수대를 열 수 없습니다';
+        $('main').innerHTML = `<div class="box"><p style="font-weight: 800;">${esc(err.message)}</p></div>`;
+      }
+    })();
+  </script>
+</body>
+</html>

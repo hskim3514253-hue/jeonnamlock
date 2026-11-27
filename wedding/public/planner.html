@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="referrer" content="no-referrer">
+  <title>플래너 페이지</title>
+  <link rel="stylesheet" href="common.css">
+</head>
+<body>
+  <main class="wrap" id="view"></main>
+
+  <script src="common.js"></script>
+  <script>
+    const view = $('#view');
+    let token = hashToken('wr_planner');
+
+    function signup() {
+      view.className = 'wrap narrow';
+      view.style.paddingTop = '3rem';
+      view.innerHTML = `
+        <h1>소개 링크 하나로<br>고객을 연결하세요</h1>
+        <p style="font-weight: 700; margin: 1rem 0 1.5rem;">고객이 내 링크로 가입하면 자동으로 내 고객으로 묶이고, 청첩장에 업체명이 표시되며, 소개 수수료가 월별로 정산됩니다.</p>
+        <form id="join" class="box">
+          <h2>플래너 등록</h2>
+          <div class="field"><label for="p_name">이름</label><input id="p_name" name="name" type="text" maxlength="20" required autocomplete="name"></div>
+          <div class="field"><label for="p_company">업체명</label><input id="p_company" name="company" type="text" maxlength="40" required autocomplete="organization"></div>
+          <div class="field"><label for="p_phone">연락처</label><input id="p_phone" name="phone" type="tel" maxlength="20" autocomplete="tel"></div>
+          <button class="btn block yellow" type="submit">등록하고 소개 링크 받기</button>
+        </form>
+        <p style="margin-top: 1.25rem;"><a href="./">처음으로</a></p>`;
+    }
+
+    function dashboard(p) {
+      const link = abs("./?ref=" + p.code);
+      const unpaid = p.months.filter((m) => !m.paidAt).reduce((s, m) => s + m.amount, 0);
+      const paid = p.months.filter((m) => m.paidAt).reduce((s, m) => s + m.amount, 0);
+      view.className = 'wrap';
+      view.style.paddingTop = '';
+      document.title = `${p.company} 플래너 페이지`;
+      view.innerHTML = `
+        <h1 style="font-size: 2rem; margin: 0.75rem 0 0.25rem;">${esc(p.company)}</h1>
+        <p style="font-weight: 800; margin-bottom: 1.25rem;">${esc(p.name)} 플래너</p>
+        <div class="box yellow">
+          <h2>내 소개 링크</h2>
+          <p style="font-weight: 700; margin-bottom: 0.75rem;">이 링크를 고객에게 보내세요. 고객이 청첩장을 공개하면 건당 ${won(p.fee)}이 적립됩니다.</p>
+          <div class="linkbox">
+            <input type="text" readonly value="${esc(link)}" aria-label="소개 링크">
+            <button class="btn" type="button" data-copy="${esc(link)}">링크 복사</button>
+          </div>
+        </div>
+        <div class="grid4" style="margin: 1.25rem 0;">
+          <div class="box stat cyan"><div class="k">소개한 고객</div><div class="v">${p.couples.length}쌍</div></div>
+          <div class="box stat pink" style="margin-top: 0;"><div class="k">청첩장 공개</div><div class="v">${p.couples.filter((c) => c.status !== '가입').length}쌍</div></div>
+          <div class="box stat green" style="margin-top: 0;"><div class="k">정산 예정</div><div class="v">${won(unpaid)}</div></div>
+          <div class="box stat" style="margin-top: 0;"><div class="k">정산 완료</div><div class="v">${won(paid)}</div></div>
+        </div>
+        <div class="box">
+          <h2>내 고객</h2>
+          ${p.couples.length ? `<div class="table-wrap"><table>
+            <thead><tr><th>신랑 · 신부</th><th>예식일</th><th>진행 상태</th><th class="r">소개 수수료</th></tr></thead>
+            <tbody>${p.couples.map((c) => `<tr>
+              <td><strong>${esc(c.groom)} · ${esc(c.bride)}</strong></td>
+              <td>${esc(c.date || '미정')}</td>
+              <td><span class="tag ${c.status === '가입' ? '' : c.status === '예식 완료' ? 'green' : 'cyan'}">${c.status}</span></td>
+              <td class="r num">${c.status === '가입' ? '공개 시 적립' : won(c.fee)}</td>
+            </tr>`).join('')}</tbody></table></div>` : '<p class="empty">아직 소개한 고객이 없습니다. 위 링크를 보내 보세요.</p>'}
+          <p class="muted" style="margin-top: 0.75rem;">고객의 축의금 내역과 하객 정보는 플래너에게 공개되지 않습니다.</p>
+        </div>
+        <div class="box">
+          <h2>월별 정산</h2>
+          ${p.months.length ? `<div class="table-wrap"><table>
+            <thead><tr><th>적립 월</th><th class="r">건수</th><th class="r">금액</th><th>상태</th></tr></thead>
+            <tbody>${p.months.map((m) => `<tr>
+              <td>${esc(m.month)}</td><td class="r num">${m.count}건</td><td class="r num"><strong>${won(m.amount)}</strong></td>
+              <td><span class="tag ${m.paidAt ? 'green' : 'yellow'}">${m.paidAt ? '지급 완료' : '정산 예정'}</span></td>
+            </tr>`).join('')}</tbody></table></div>` : '<p class="empty">적립된 수수료가 없습니다.</p>'}
+        </div>
+        <div class="box">
+          <h3>이 페이지 주소 보관</h3>
+          <p style="font-weight: 700; margin-bottom: 0.75rem;">지금 주소가 플래너 전용 열쇠입니다. 즐겨찾기에 추가하거나 복사해 두세요.</p>
+          <button class="btn" type="button" data-copy="${esc(abs('planner.html#t=' + token))}">내 페이지 주소 복사</button>
+        </div>`;
+    }
+
+    async function open() {
+      if (!token) return signup();
+      try {
+        dashboard(await api('GET', 'api/planner', null, token));
+        history.replaceState(null, '', 'planner.html#t=' + token);
+      } catch {
+        localStorage.removeItem('wr_planner');
+        token = null;
+        signup();
+      }
+    }
+
+    document.addEventListener('click', (e) => {
+      const c = e.target.closest('[data-copy]');
+      if (c) copyText(c.dataset.copy);
+    });
+    document.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        const r = await api('POST', 'api/planners', formData(e.target));
+        token = r.token;
+        localStorage.setItem('wr_planner', token);
+        await open();
+      } catch (err) { toast(err.message); }
+    });
+    open();
+  </script>
+</body>
+</html>
