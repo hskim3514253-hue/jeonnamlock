@@ -1,7 +1,7 @@
 import {inquiryProducts,priceProducts} from './product-index.mjs';
 import { chatMessages, chatReply } from './chat.mjs';
 import { database } from './db.mjs';
-import { pushStatus, savePushSubscription, removePushSubscription, sendInquiryPush, testPush } from './push.mjs';
+import { pushStatus, savePushSubscription, removePushSubscription, sendInquiryPush, testPush, saveTalkSubscription, removeTalkSubscription, talkSubscriptionIds, sendTalkPush } from './push.mjs';
 import { AnalyticsError, recordPageview, readAnalytics } from './analytics.mjs';
 import { talkKeyMatches, talkLink, talkBody, talkMessages, addTalkMessage } from './talk.mjs';
 
@@ -129,7 +129,7 @@ async function eraseInquiry(id, db, env) {
   await db.run('UPDATE inquiries SET status=\'deleting\', expires_at=0 WHERE id=?', id);
   const files = await db.all('SELECT object_key FROM photos WHERE inquiry_id=?', id);
   if (files.length) await env.BUCKET.delete(files.map(file => file.object_key));
-  await db.batch([['DELETE FROM talk_messages WHERE inquiry_id=?', id], ['DELETE FROM push_outbox WHERE inquiry_id=?', id], ['DELETE FROM sms_outbox WHERE inquiry_id=?', id], ['DELETE FROM photos WHERE inquiry_id=?', id], ['DELETE FROM inquiries WHERE id=?', id]]);
+  await db.batch([['DELETE FROM talk_subscriptions WHERE inquiry_id=?', id], ['DELETE FROM talk_messages WHERE inquiry_id=?', id], ['DELETE FROM push_outbox WHERE inquiry_id=?', id], ['DELETE FROM sms_outbox WHERE inquiry_id=?', id], ['DELETE FROM photos WHERE inquiry_id=?', id], ['DELETE FROM inquiries WHERE id=?', id]]);
 }
 async function draft(request, db, id) {
   const token = request.headers.get('X-Quote-Token') || '';
@@ -176,7 +176,21 @@ async function api(request, env, ctx, pathname, signInUrl) {
   const talkRoute = pathname.match(/^\/api\/talk\/([^/]+)$/);
   if (talkRoute && request.method === 'GET') {
     const record = await talkInquiry(request, env, db, talkRoute[1]);
-    return json({ receipt: record.receipt, service: record.service, messages: await talkMessages(db, record.id) });
+    return json({ receipt: record.receipt, service: record.service, messages: await talkMessages(db, record.id), alerts: { publicKey: env.VAPID_PRIVATE_JWK && env.VAPID_PUBLIC_KEY ? env.VAPID_PUBLIC_KEY : '', devices: await talkSubscriptionIds(db, record.id) } });
+  }
+  const talkPushRoute = pathname.match(/^\/api\/talk\/([^/]+)\/push$/);
+  if (talkPushRoute && ['PUT','DELETE'].includes(request.method)) {
+    const record = await talkInquiry(request, env, db, talkPushRoute[1]);
+    const endpoint = String((await readJson(request)).endpoint || '');
+    if (request.method === 'DELETE') { await removeTalkSubscription(db, record.id, endpoint); return json({ removed: true }); }
+    await talkLimit(request, env, db);
+    try { return json(await saveTalkSubscription(db, env, record.id, endpoint)); }
+    catch (error) {
+      if (error.message === 'INVALID_PUSH_ENDPOINT') reject(400, '이 브라우저에서는 알림을 켤 수 없습니다.');
+      if (error.message === 'PUSH_DEVICE_LIMIT') reject(409, '알림은 기기 3대까지 켤 수 있습니다.');
+      if (error.message === 'PUSH_NOT_CONFIGURED') reject(503, '알림을 준비하고 있습니다. 잠시 후 다시 시도해주세요.');
+      throw error;
+    }
   }
   if (talkRoute && request.method === 'POST') {
     const record = await talkInquiry(request, env, db, talkRoute[1]);
@@ -200,7 +214,7 @@ async function api(request, env, ctx, pathname, signInUrl) {
     if (!record) reject(404, '문의가 없거나 삭제되었습니다.');
     if (request.method === 'GET') {
       await db.run('UPDATE inquiries SET talk_read_at=? WHERE id=?', Date.now(), id);
-      return json({ messages: await talkMessages(db, id), link: (env.SITE_ORIGIN || new URL(request.url).origin) + await talkLink(env, id) });
+      return json({ messages: await talkMessages(db, id), link: (env.SITE_ORIGIN || new URL(request.url).origin) + await talkLink(env, id), customerAlerts: (await talkSubscriptionIds(db, id)).length });
     }
     if (request.method === 'POST') {
       const body = talkBody((await readJson(request)).body);
@@ -208,6 +222,7 @@ async function api(request, env, ctx, pathname, signInUrl) {
       const message = await addTalkMessage(db, id, 'owner', body);
       if (!message) reject(409, '이 문의의 메시지가 너무 많습니다.');
       await db.run('UPDATE inquiries SET status=\'consulting\',talk_read_at=?,updated_at=? WHERE id=?', message.at, message.at, id);
+      ctx.waitUntil(sendTalkPush(db, env, id).catch(() => console.error('TALK_PUSH_FAILED')));
       return json({ message }, 201);
     }
   }

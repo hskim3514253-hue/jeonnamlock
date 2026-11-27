@@ -42,6 +42,7 @@ import {renderTalk,keepFresh} from './talk-view.js';
     renderTalk(el('talk-messages'),result.messages,'owner','아직 대화가 없습니다. 먼저 메시지를 보내고, 아래 버튼으로 손님에게 채팅 주소를 알려주세요.');
     const invite=`전남열쇠입니다. 문의하신 내용에 답변드렸습니다. 아래 주소에서 확인하고 답장하실 수 있어요.\n${talkLink}`;
     el('talk-sms').href=`sms:${selected.phone}?&body=${encodeURIComponent(invite)}`;el('talk-unread').hidden=true;
+    const on=result.customerAlerts>0;el('talk-alert-state').dataset.on=on?'1':'0';el('talk-alert-state').textContent=on?'손님이 답변 알림을 켰습니다. 답을 보내면 손님 기기에 알림이 갑니다.':'손님이 답변 알림을 켜지 않았습니다. 답을 보낸 뒤 아래 버튼으로 문자를 보내 알려주세요.';
   }
   function showDetailTab(tab){
     const talk=tab==='talk';el('detail-content').hidden=talk;el('talk-panel').hidden=!talk;el('detail-tab-info').setAttribute('aria-pressed',String(!talk));el('detail-tab-talk').setAttribute('aria-pressed',String(talk));
@@ -96,6 +97,8 @@ import {renderTalk,keepFresh} from './talk-view.js';
     try{const session=await api('/api/session');const gate=el('auth-gate');gate.replaceChildren();if(!session.isAdmin){gate.hidden=false;el('dashboard').hidden=true;el('inquiries').replaceChildren();analytics.reset();}
       if(!session.user){gate.append(text('h2','사장님 계정으로 로그인해주세요.'),text('p','접수 내용과 사진은 허용된 관리자만 확인할 수 있습니다.'));const a=text('a','관리자 로그인','button');a.href=session.signInUrl;a.target='_top';gate.append(a);return;}
       if(!session.isAdmin){gate.append(text('h2',session.adminConfigured?'관리 권한이 없는 계정입니다.':'관리자 계정을 연결하고 있습니다.'),text('p','홈페이지 소유자의 계정으로 접속해주세요.'));if(!session.adminConfigured){gate.append(text('p',`로그인 계정: ${session.user.email||'로그인 계정'}`),text('p',`계정 연결 ID: ${session.user.id}`));}return;}
+      // This is the owner's device: alerts here always open the inbox, never a customer chat.
+      if('caches' in window)caches.open('jn-talk-v1').then(cache=>cache.delete('/__talk-target')).catch(()=>{});
       gate.hidden=true;el('dashboard').hidden=false;showTab(location.hash==='#analytics'?'analytics':location.hash==='#notifications'?'push':'inbox');await Promise.all([load().catch(error),loadPush().catch(error)]);
     }catch(err){error(err);el('dashboard').hidden=true;analytics.reset();el('auth-gate').hidden=false;el('auth-gate').replaceChildren(text('h2','접수함을 불러오지 못했습니다.'),text('p','잠시 후 새로고침해주세요.'));}
   }

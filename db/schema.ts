@@ -94,3 +94,14 @@ export const talkMessages = sqliteTable('talk_messages', {
   body: text('body').notNull(),
   createdAt: integer('created_at').notNull()
 }, table => [index('talk_messages_inquiry_idx').on(table.inquiryId, table.createdAt)]);
+
+// A customer's browser that asked to be alerted when the owner answers in the chat.
+export const talkSubscriptions = sqliteTable('talk_subscriptions', {
+  id: text('id').primaryKey(),
+  inquiryId: text('inquiry_id').notNull().references(() => inquiries.id, {onDelete:'cascade'}),
+  endpointId: text('endpoint_id').notNull(),
+  encryptedEndpoint: text('encrypted_endpoint').notNull(),
+  createdAt: integer('created_at').notNull(),
+  lastStatus: text('last_status'),
+  lastAt: integer('last_at')
+}, table => [index('talk_subscriptions_inquiry_idx').on(table.inquiryId)]);

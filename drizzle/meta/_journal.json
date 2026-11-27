@@ -43,6 +43,13 @@
       "when": 1795770000000,
       "tag": "0005_consult_talk",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1795780800000,
+      "tag": "0006_talk_alerts",
+      "breakpoints": true
     }
   ]
 }

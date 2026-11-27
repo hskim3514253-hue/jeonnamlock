@@ -38,3 +38,10 @@
 .talk-copied{margin:10px 0 0;font-size:13px;color:#1f6b3a}.talk-copied:empty{display:none}
 @media(max-width:640px){.talk-message{max-width:90%}.talk-invite .button{width:100%}.detail-tabs{gap:18px}.detail-tabs button{font-size:15px}}
 #talk-panel .talk-form textarea{min-height:64px;overflow-y:auto}
+.talk-alerts{display:flex;align-items:center;gap:10px;margin:10px 0 0}
+.talk-alerts button{flex:none;height:38px;padding:0 14px;border:1px solid #111;border-radius:999px;background:#fff;color:#111;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer}
+.talk-alerts button[data-on="1"]{border-color:#bdbdbd;color:#555;font-weight:500}
+.talk-alerts button:disabled{opacity:.5}
+.talk-alerts p{margin:0;font-size:12.5px;line-height:1.5;color:#555}
+.talk-alert-state{margin:12px 0 10px;padding:10px 14px;border-radius:10px;font-size:14px;line-height:1.55;background:#eef6f0;color:#1f5a35}
+.talk-alert-state[data-on="0"]{background:#fff6e5;color:#7a5200}

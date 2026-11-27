@@ -74,3 +74,34 @@ export async function testPush(db,env,userId,id) {
   const detail=await db.one('SELECT last_http_status,last_error FROM push_subscriptions WHERE id=? AND user_id=?',id,userId);
   return {status,httpStatus:detail.last_http_status,errorCode:detail.last_error};
 }
+
+// Customer alerts for the consultation chat. Same payload-free wake-up as the owner's alerts:
+// nothing about the conversation is sent to the browser's push service.
+export async function saveTalkSubscription(db,env,inquiryId,endpoint) {
+  if(!validPushEndpoint(endpoint))throw new Error('INVALID_PUSH_ENDPOINT');
+  if(!env.VAPID_PRIVATE_JWK || !env.VAPID_PUBLIC_KEY)throw new Error('PUSH_NOT_CONFIGURED');
+  const endpointId=await pushId(endpoint), id=`${inquiryId}:${endpointId}`, encrypted=await encryptEndpoint(endpoint,env);
+  const result=await db.run('INSERT INTO talk_subscriptions (id,inquiry_id,endpoint_id,encrypted_endpoint,created_at) SELECT ?,?,?,?,? WHERE (SELECT count(*) FROM talk_subscriptions WHERE inquiry_id=?)<3 OR EXISTS (SELECT 1 FROM talk_subscriptions WHERE id=?) ON CONFLICT(id) DO UPDATE SET encrypted_endpoint=excluded.encrypted_endpoint',id,inquiryId,endpointId,encrypted,Date.now(),inquiryId,id);
+  if(!result.meta.changes)throw new Error('PUSH_DEVICE_LIMIT');return {id:endpointId};
+}
+export async function removeTalkSubscription(db,inquiryId,endpoint) {await db.run('DELETE FROM talk_subscriptions WHERE id=?',`${inquiryId}:${await pushId(endpoint)}`);}
+export async function talkSubscriptionIds(db,inquiryId) {return (await db.all('SELECT endpoint_id FROM talk_subscriptions WHERE inquiry_id=?',inquiryId)).map(row=>row.endpoint_id);}
+export async function sendTalkPush(db,env,inquiryId,now=Date.now()) {
+  if(!env.VAPID_PRIVATE_JWK)return 0;
+  // At most one alert every 30 seconds per device, however fast the owner types.
+  const rows=await db.all('SELECT id,encrypted_endpoint FROM talk_subscriptions WHERE inquiry_id=? AND (last_at IS NULL OR last_at<?) LIMIT 3',inquiryId,now-30000);
+  let accepted=0;
+  await Promise.all(rows.map(async row=>{
+    const claim=await db.run('UPDATE talk_subscriptions SET last_at=? WHERE id=? AND (last_at IS NULL OR last_at<?)',now,row.id,now-30000);if(!claim.meta.changes)return;
+    let status='failed';
+    try {
+      const endpoint=await decryptEndpoint(row.encrypted_endpoint,env);if(!validPushEndpoint(endpoint))throw new Error('INVALID_PUSH_ENDPOINT');
+      const response=await fetch(endpoint,{method:'POST',headers:{Authorization:await vapidAuthorization(endpoint,env),TTL:'86400',Urgency:'high','Content-Length':'0'},body:new Uint8Array(),redirect:'manual',signal:AbortSignal.timeout(10000)});
+      status=response.ok?'accepted':[404,410].includes(response.status)?'expired':'failed';await response.body?.cancel();
+    } catch { console.error('talk_push_failed'); }
+    if(status==='expired')await db.run('DELETE FROM talk_subscriptions WHERE id=?',row.id);
+    else await db.run('UPDATE talk_subscriptions SET last_status=? WHERE id=?',status,row.id);
+    if(status==='accepted')accepted++;
+  }));
+  return accepted;
+}
