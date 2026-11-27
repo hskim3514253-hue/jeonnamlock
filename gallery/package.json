@@ -1,0 +1,19 @@
+{
+  "name": "jeonnam-lock-gallery",
+  "private": true,
+  "type": "module",
+  "description": "Builds the picture-rail gallery (React + Tailwind) into dist/rail-gallery.js and dist/rail-gallery.css.",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.5",
+    "@types/react": "^19.3.3",
+    "@types/react-dom": "^19.3.0",
+    "esbuild": "^0.28.2",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tailwindcss": "^4.3.5",
+    "typescript": "^7.0.2"
+  }
+}

@@ -89,15 +89,34 @@ test('published admin view module and homepage render without leaking server int
   const page=await worker.fetch(new Request('https://example.test/'),{});assert.equal(page.status,200);assert.equal(page.headers.get('X-Content-Type-Options'),'nosniff');
   const denied=await worker.fetch(new Request('https://example.test/src/worker.mjs'),{});assert.equal(denied.status,404);
 });
-test('scroll intro assets are packaged and the intro keeps its staged-image notice',async()=>{
-  for(const [file,mime] of [['intro.css','text/css'],['chat.css','text/css'],['chat.js','text/javascript'],['intro.js','text/javascript'],['intro-lock.png','image/png'],['intro-door.jpg','image/jpeg']]){
+test('scene assets are packaged and the scenes carry no inline styles',async()=>{
+  for(const [file,mime] of [['teal.css','text/css'],['chat.css','text/css'],['chat.js','text/javascript'],['scenes.js','text/javascript'],['scene-door.jpg','image/jpeg'],['product-bestin-idl-400m.png','image/png']]){
     const response=await worker.fetch(new Request(`https://example.test/${file}`),{});
     assert.equal(response.status,200,file);assert.match(response.headers.get('Content-Type'),new RegExp('^'+mime));
   }
   const html=await (await worker.fetch(new Request('https://jeonnamlock.com/'),{})).text();
-  const intro=html.match(/<section class="lock-intro"[\s\S]*?<\/section>/)?.[0];
-  assert.ok(intro,'The intro section is present');
-  assert.match(intro,/연출 이미지입니다\. 실제 시공 사진이 아닙니다\./);
-  assert.equal(/style=/.test(intro),false,'No inline styles, so the CSP stays unchanged');
+  const scenes=html.match(/<section class="pb-hero"[\s\S]*?<section class="pb-steps"[\s\S]*?<\/section>/)?.[0];
+  assert.ok(scenes,'The hero, opening and steps scenes are present');
+  assert.match(scenes,/우리 집 문에 맞는/);assert.match(scenes,/href="tel:01092845963"/);assert.match(scenes,/연출 이미지 · 실제 설치 모습은 다를 수 있습니다/);
+  assert.equal(/style=/.test(scenes),false,'No inline styles, so the CSP stays unchanged');
+  assert.match(html,/<body class="customer-page pb no-motion">/,'Scenes start in their finished state until the script enables motion');
   assert.equal([...html.matchAll(/<h1\b/g)].length,1);
+});
+
+test('the picture-rail gallery lists real catalog products and its files are served', async () => {
+  const { railItems, railBlock } = await import('../scripts/rail-gallery.mjs');
+  const { products } = await import('../src/catalog.mjs');
+  const html=await (await worker.fetch(new Request('https://jeonnamlock.com/'),{})).text();
+  assert.ok(html.includes(railBlock()),'Run "node scripts/rail-gallery.mjs" after changing the catalog');
+  const items=railItems();assert.ok(items.length>=6);
+  for(const item of items){
+    assert.ok(products.some(product=>product.id===item.id&&product.name===item.title),item.id);
+    assert.equal((await worker.fetch(new Request('https://jeonnamlock.com'+item.image),{})).status,200,item.image);
+    assert.equal(item.href,'/products/'+item.id);
+    assert.equal(/원|\$/.test(item.tag),false,'No prices on the wall labels');
+  }
+  for(const [file,mime] of [['rail-gallery.js','text/javascript'],['rail-gallery.css','text/css']]){
+    const response=await worker.fetch(new Request('https://jeonnamlock.com/'+file),{});
+    assert.equal(response.status,200,file);assert.match(response.headers.get('content-type'),new RegExp(mime));
+  }
 });
