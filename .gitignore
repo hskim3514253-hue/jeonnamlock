@@ -15,4 +15,3 @@ cloudflare/public/
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
-wedding/data/
