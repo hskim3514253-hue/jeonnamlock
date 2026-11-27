@@ -1,11 +1,12 @@
 import {pushEnvironment} from './push-environment.js';
 import {mountAnalytics} from './admin-analytics.js';
 import {inquirySummary,inquiryFields} from './quote-view.js';
+import {renderTalk,keepFresh} from './talk-view.js';
 (() => {
   'use strict';
   const el=id=>document.getElementById(id);
   let selected=null, offset=0, pushState=null, pushRegistration=null, currentPushId=null;
-  let activeTab='inbox';
+  let activeTab='inbox', stopTalk=null, talkLink='';
   const analytics=mountAnalytics({root:el('analytics-panel'),api});
   const date=value=>new Intl.DateTimeFormat('ko-KR',{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Seoul'}).format(new Date(value));
   const text=(tag,value,className)=>{const node=document.createElement(tag);node.textContent=value;if(className)node.className=className;return node;};
@@ -29,13 +30,25 @@ import {inquirySummary,inquiryFields} from './quote-view.js';
       const info=document.createElement('div');info.append(text('span',row.service),text('small',summary.location));
       const when=document.createElement('div');when.append(text('span',date(row.submitted_at)),text('small',`사진 ${row.photo_count}장 · ${row.receipt}`));
       if(row.selected_product)info.prepend(productCard(row.selected_product));
-      button.append(identity,info,when,text('span',row.status==='new'?'새 문의':'상담 중',`status-chip ${row.status}`));
-      button.addEventListener('click',()=>openDetail(row.id).catch(error));el('inquiries').append(button);
+      const chips=text('span','','row-chips');chips.append(text('span',row.status==='new'?'새 문의':'상담 중',`status-chip ${row.status}`));if(row.unread_messages>0)chips.append(text('span',`새 메시지 ${row.unread_messages}`,'talk-badge'));
+      button.append(identity,info,when,chips);
+      button.addEventListener('click',()=>openDetail(row.id,row.unread_messages>0?'talk':'info').catch(error));el('inquiries').append(button);
     }
     offset+=result.inquiries.length;el('load-more').hidden=!result.hasMore;el('inbox-count').textContent=`표시된 문의 ${offset}건`;
     if(!offset){const empty=text('div','','empty-state');empty.append(text('strong','아직 접수된 문의가 없습니다.'),text('p','고객이 문의를 접수하면 이곳에서 확인할 수 있습니다.'));el('inquiries').append(empty);}
   }
-  async function openDetail(id){
+  async function loadTalk(){
+    if(!selected)return;const result=await api(`/api/admin/quotes/${selected.id}/talk`);talkLink=result.link;
+    renderTalk(el('talk-messages'),result.messages,'owner','아직 대화가 없습니다. 먼저 메시지를 보내고, 아래 버튼으로 손님에게 채팅 주소를 알려주세요.');
+    const invite=`전남열쇠입니다. 문의하신 내용에 답변드렸습니다. 아래 주소에서 확인하고 답장하실 수 있어요.\n${talkLink}`;
+    el('talk-sms').href=`sms:${selected.phone}?&body=${encodeURIComponent(invite)}`;el('talk-unread').hidden=true;
+  }
+  function showDetailTab(tab){
+    const talk=tab==='talk';el('detail-content').hidden=talk;el('talk-panel').hidden=!talk;el('detail-tab-info').setAttribute('aria-pressed',String(!talk));el('detail-tab-talk').setAttribute('aria-pressed',String(talk));
+    stopTalk?.();stopTalk=null;el('talk-copied').textContent='';
+    if(talk){el('talk-messages').dataset.seen='';stopTalk=keepFresh(()=>loadTalk().catch(err=>{error(err,'detail-error');throw err;}));}
+  }
+  async function openDetail(id,tab='info'){
     const result=await api(`/api/admin/quotes/${id}`);selected=result.inquiry;const record=selected, target=el('detail-content');target.replaceChildren();el('detail-error').textContent='';
     target.append(text('span',record.receipt,'eyebrow'),text('h2',inquirySummary(record).title),text('p',date(record.submitted_at),'detail-meta'));
     if(record.selected_product)target.append(productCard(record.selected_product));
@@ -44,7 +57,9 @@ import {inquirySummary,inquiryFields} from './quote-view.js';
       list.append(text('dt',label));const dd=text('dd',value);if(label==='전화번호'){const a=text('a',value);a.href=`tel:${value}`;dd.replaceChildren(a);}list.append(dd);
     }target.append(list);
     for(const kind of ['door','product']){target.append(text('h3',kind==='door'?'설치할 문 사진':'원하는 도어락 사진'));const section=document.createElement('div');section.className='detail-photos';const files=result.photos.filter(photo=>photo.kind===kind);for(const photo of files){const link=document.createElement('a');link.href=photo.url;link.target='_blank';link.rel='noopener';const img=document.createElement('img');img.src=photo.url;img.alt=kind==='door'?'설치할 문':'원하는 도어락';link.append(img,text('span','사진 크게 보기 ↗'));section.append(link);}if(!files.length)section.append(text('p','첨부 사진 없음'));target.append(section);}
-    el('mark-consulting').disabled=record.status==='consulting';el('mark-consulting').textContent=record.status==='consulting'?'상담 중':'상담 중으로 변경';el('detail-dialog').showModal();
+    el('mark-consulting').disabled=record.status==='consulting';el('mark-consulting').textContent=record.status==='consulting'?'상담 중':'상담 중으로 변경';
+    const unread=Number(record.unread_messages)||0;el('talk-unread').hidden=!unread;el('talk-unread').textContent=unread?`새 메시지 ${unread}`:'';el('talk-messages').replaceChildren();el('talk-messages').dataset.count='';el('talk-input').value='';
+    showDetailTab(tab);el('detail-dialog').showModal();
   }
   function confirmAction(title,message){return new Promise(resolve=>{el('confirm-title').textContent=title;el('confirm-message').textContent=message;const modal=el('confirm-dialog');const finish=value=>{modal.close();resolve(value);};el('confirm-yes').onclick=()=>finish(true);el('confirm-no').onclick=()=>finish(false);modal.oncancel=()=>resolve(false);modal.showModal();});}
   const pushContext=()=>pushEnvironment({userAgent:navigator.userAgent,platform:navigator.platform,maxTouchPoints:navigator.maxTouchPoints,standalone:navigator.standalone,displayStandalone:window.matchMedia('(display-mode: standalone)').matches,secure:window.isSecureContext,hasServiceWorker:'serviceWorker' in navigator,hasPushManager:'PushManager' in window,hasNotification:'Notification' in window,permission:'Notification' in window?Notification.permission:'default'});
@@ -85,6 +100,12 @@ import {inquirySummary,inquiryFields} from './quote-view.js';
     }catch(err){error(err);el('dashboard').hidden=true;analytics.reset();el('auth-gate').hidden=false;el('auth-gate').replaceChildren(text('h2','접수함을 불러오지 못했습니다.'),text('p','잠시 후 새로고침해주세요.'));}
   }
   el('refresh').onclick=async()=>{await init();if(!el('dashboard').hidden&&activeTab==='analytics')await analytics.refresh();};el('load-more').onclick=()=>load(false).catch(error);el('close-detail').onclick=()=>el('detail-dialog').close();
+  el('detail-dialog').addEventListener('close',()=>{stopTalk?.();stopTalk=null;if(!el('dashboard').hidden)load().catch(error);});
+  el('detail-tab-info').onclick=()=>showDetailTab('info');el('detail-tab-talk').onclick=()=>showDetailTab('talk');
+  el('talk-form').addEventListener('submit',async event=>{event.preventDefault();const body=el('talk-input').value.trim();if(!body)return;el('talk-send').disabled=true;el('detail-error').textContent='';try{await api(`/api/admin/quotes/${selected.id}/talk`,'POST',{body});el('talk-input').value='';el('talk-messages').dataset.seen='';await loadTalk();el('mark-consulting').disabled=true;el('mark-consulting').textContent='상담 중';}catch(err){error(err,'detail-error');}finally{el('talk-send').disabled=false;el('talk-input').focus();}});
+  el('talk-copy').onclick=async()=>{try{await navigator.clipboard.writeText(talkLink);el('talk-copied').textContent='채팅 주소를 복사했습니다. 문자나 카카오톡에 붙여 넣어 손님에게 보내주세요.';}catch{el('talk-copied').textContent=talkLink;}};
+  // New inquiries and new messages show up without pressing refresh.
+  setInterval(()=>{if(!document.hidden&&!el('dashboard').hidden&&activeTab==='inbox'&&!el('detail-dialog').open&&!el('confirm-dialog').open&&offset<=50)load().catch(()=>{});},30000);
   el('mark-consulting').onclick=async()=>{try{await api(`/api/admin/quotes/${selected.id}`,'PATCH',{status:'consulting'});el('detail-dialog').close();await load();}catch(err){error(err,'detail-error');}};
   el('delete-inquiry').onclick=async()=>{if(!await confirmAction('상담 완료 · 정보 삭제',`${selected.receipt} 문의의 고객 정보와 사진을 영구 삭제합니다. 삭제 후 복구할 수 없습니다. 상담이 끝났거나 고객이 삭제를 요청한 경우 진행해주세요.`))return;try{await api(`/api/admin/quotes/${selected.id}`,'DELETE',{confirm:selected.receipt});el('detail-dialog').close();await load();await loadPush();}catch(err){error(err,'detail-error');}};
   function showTab(tab){activeTab=tab;for(const key of ['inbox','push','analytics']){el(`${key}-panel`).hidden=key!==tab;el(`tab-${key}`).setAttribute('aria-pressed',String(key===tab));}el('admin-screen-title').textContent=tab==='analytics'?'사이트 방문 통계':tab==='push'?'무료 알림 설정':'견적 접수함';el('admin-screen-description').textContent=tab==='analytics'?'시간별 방문 흐름과 하루 조회 수를 확인하세요.':tab==='push'?'새로운 견적이 들어오면 휴대폰으로 확인하세요.':'고객 정보와 사진을 확인하고 상담을 이어가세요.';el('admin-screen-label').textContent=tab==='analytics'?'SITE ANALYTICS':tab==='push'?'FREE WEB PUSH':'CONSULTATION INBOX';if(tab==='analytics')void analytics.open();}

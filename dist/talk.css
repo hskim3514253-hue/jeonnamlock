@@ -1,0 +1,40 @@
+/* Consultation chat: the customer page, and the same message bubbles inside the owner's inbox. */
+.talk-body{margin:0;display:flex;flex-direction:column;height:100vh;height:100dvh;background:#f5f5f5;color:#111;font-family:"Pretendard Variable",Pretendard,system-ui,-apple-system,"Malgun Gothic",sans-serif;font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%}
+.talk-body *{box-sizing:border-box}
+.talk-header{flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px max(16px,env(safe-area-inset-left));background:#111;color:#fff}
+.talk-brand{font-size:18px;font-weight:700;color:#fff;text-decoration:none}.talk-brand span{margin-left:8px;font-size:13px;font-weight:500;color:#bdbdbd}
+.talk-call{flex:none;padding:9px 16px;border-radius:999px;background:#fff;color:#111;font-size:14px;font-weight:600;text-decoration:none}
+.talk-main{flex:1;min-height:0;display:flex;flex-direction:column;width:min(720px,100%);margin:0 auto;padding:0 16px}
+.talk-receipt{flex:none;margin:14px 0 0;font-size:13px;color:#666;text-align:center}.talk-receipt:empty{display:none}
+.talk-status{margin:40px 0;text-align:center;color:#555}
+.talk-list{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:16px 0;overscroll-behavior:contain}
+.talk-empty{margin:auto;max-width:300px;text-align:center;color:#666;font-size:15px}
+.talk-message{display:grid;gap:4px;max-width:82%}
+.talk-message p{margin:0;padding:11px 14px;border-radius:16px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:16px;line-height:1.5}
+.talk-message small{font-size:12px;color:#777}
+.talk-message.is-mine{align-self:flex-end;justify-items:end}.talk-message.is-mine p{background:#111;color:#fff;border-bottom-right-radius:4px}
+.talk-message.is-theirs{align-self:flex-start}.talk-message.is-theirs p{background:#fff;color:#111;border:1px solid #dcdcdc;border-bottom-left-radius:4px}
+.talk-foot{flex:none;width:min(720px,100%);margin:0 auto;padding:10px 16px max(12px,env(safe-area-inset-bottom))}
+.talk-form{display:flex;align-items:flex-end;gap:8px}
+.talk-form textarea{flex:1;min-height:48px;max-height:140px;padding:12px 14px;border:1px solid #bdbdbd;border-radius:14px;background:#fff;color:#111;font:inherit;font-size:16px;line-height:1.45;resize:none;overflow-y:hidden}
+.talk-form textarea:focus-visible,.talk-form button:focus-visible,.talk-call:focus-visible{outline:2px solid #111;outline-offset:2px}
+.talk-form button{flex:none;height:48px;padding:0 20px;border:0;border-radius:14px;background:#111;color:#fff;font:inherit;font-size:15px;font-weight:600;cursor:pointer}
+.talk-form button:disabled{opacity:.5;cursor:default}
+.talk-error{margin:8px 0 0;font-size:14px;color:#b3261e}.talk-error:empty{display:none}
+.talk-note{margin:10px 0 0;font-size:12px;line-height:1.6;color:#6b6b6b}.talk-note a{color:#111}
+.talk-sr{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+/* Inside the owner's inbox */
+.detail-tabs{display:flex;gap:22px;margin:0 40px 20px 0;border-bottom:1px solid #dae2ee}
+.detail-tabs button{padding:12px 1px;background:none;border:0;border-bottom:3px solid transparent;font-size:16px;color:#6a7688;cursor:pointer}
+.detail-tabs button[aria-pressed=true]{border-color:#111;color:#111;font-weight:650}
+.talk-badge{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;background:#b3261e;color:#fff;font-size:12px;font-weight:600;white-space:nowrap}
+#talk-panel .talk-list{height:min(46vh,420px);flex:none;margin:0 0 12px;padding:14px;background:#f5f5f5;border:1px solid #e1e7f0;border-radius:12px}
+#talk-panel .talk-help{margin:0 0 12px;font-size:14px;line-height:1.6;color:#5f6b7d}
+.talk-invite{margin:16px 0 4px;padding:16px;background:#f6f8fc;border-radius:12px}
+.talk-invite p{margin:0 0 12px;font-size:14px;line-height:1.6;color:#4f5b6d}
+.talk-invite div{display:flex;flex-wrap:wrap;gap:10px}
+.talk-invite .button{min-height:44px;padding:11px 16px;font-size:14px}
+.talk-copied{margin:10px 0 0;font-size:13px;color:#1f6b3a}.talk-copied:empty{display:none}
+@media(max-width:640px){.talk-message{max-width:90%}.talk-invite .button{width:100%}.detail-tabs{gap:18px}.detail-tabs button{font-size:15px}}
+#talk-panel .talk-form textarea{min-height:64px;overflow-y:auto}

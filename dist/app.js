@@ -164,6 +164,9 @@
       attempt.complete = true;
       summary(byId('success-summary'));
       receipt.textContent = `접수번호 ${result.receipt}`;
+      const talk = typeof result.talk === 'string' && /^\/talk#[a-f0-9-]{36}\.[a-f0-9]{64}$/.test(result.talk) ? result.talk : '';
+      byId('open-talk').hidden = byId('open-talk-help').hidden = !talk;
+      if (talk) byId('open-talk').href = talk;
       uploadProgress.textContent = '문의가 정상적으로 접수되었습니다.';
       next.querySelector('span').textContent = '접수 완료 확인';
       dialog.showModal();

@@ -30,7 +30,8 @@ export const inquiries = sqliteTable('inquiries', {
   createdAt: integer('created_at').notNull(),
   submittedAt: integer('submitted_at'),
   updatedAt: integer('updated_at').notNull(),
-  expiresAt: integer('expires_at').notNull()
+  expiresAt: integer('expires_at').notNull(),
+  talkReadAt: integer('talk_read_at')
 }, table => [uniqueIndex('inquiries_request_key_idx').on(table.requestKey), uniqueIndex('inquiries_receipt_idx').on(table.receipt), index('inquiries_status_created_idx').on(table.status, table.createdAt), index('inquiries_expiry_idx').on(table.expiresAt)]);
 
 export const photos = sqliteTable('photos', {
@@ -84,3 +85,12 @@ export const pushOutbox = sqliteTable('push_outbox', {
   attempts: integer('attempts').notNull().default(0),
   updatedAt: integer('updated_at').notNull()
 }, table => [index('push_outbox_status_idx').on(table.status, table.updatedAt)]);
+
+// Consultation chat attached to an inquiry; removed together with it.
+export const talkMessages = sqliteTable('talk_messages', {
+  id: text('id').primaryKey(),
+  inquiryId: text('inquiry_id').notNull().references(() => inquiries.id, {onDelete:'cascade'}),
+  sender: text('sender').notNull(),
+  body: text('body').notNull(),
+  createdAt: integer('created_at').notNull()
+}, table => [index('talk_messages_inquiry_idx').on(table.inquiryId, table.createdAt)]);

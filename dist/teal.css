@@ -269,6 +269,7 @@
 .pb h1,.pb h2,.pb h3{text-wrap:balance}
 @media(max-width:991px){.pb .pb-footer{padding-right:20px}.pb .catalog-section>.container{margin:0 20px}.pb .catalog-section{padding:40px 0}.pb .business-section{padding:64px 0}}
 .pb .pb-float{transition:opacity .3s,transform .3s,background-color .3s}@media(max-width:991px){.pb.float-away .pb-float,.pb.menu-open .pb-float{opacity:0;pointer-events:none;transform:translateY(8px)}}
+.pb .talk-hint{margin:10px 0 16px;font-size:13px;line-height:1.6;color:#666}
 /* Black and white */
 .pb .pb-header .pb-coral,.pb .pb-hero-actions .pb-coral,.pb .pb-burger{background:#fff;color:#111;box-shadow:0 0 0 1px #111}
 .pb .pb-door-wood{filter:grayscale(1) contrast(1.08)}

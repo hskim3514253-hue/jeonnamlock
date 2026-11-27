@@ -3,6 +3,7 @@ import { chatMessages, chatReply } from './chat.mjs';
 import { database } from './db.mjs';
 import { pushStatus, savePushSubscription, removePushSubscription, sendInquiryPush, testPush } from './push.mjs';
 import { AnalyticsError, recordPageview, readAnalytics } from './analytics.mjs';
+import { talkKeyMatches, talkLink, talkBody, talkMessages, addTalkMessage } from './talk.mjs';
 
 const SERVICES = ['새 도어락 설치', '도어락 교체', '고장 · 잠김 상담'];
 const SPACES = ['아파트 / 오피스텔', '빌라 / 단독주택', '상가 / 사무실', '기타 공간'];
@@ -128,13 +129,26 @@ async function eraseInquiry(id, db, env) {
   await db.run('UPDATE inquiries SET status=\'deleting\', expires_at=0 WHERE id=?', id);
   const files = await db.all('SELECT object_key FROM photos WHERE inquiry_id=?', id);
   if (files.length) await env.BUCKET.delete(files.map(file => file.object_key));
-  await db.batch([['DELETE FROM push_outbox WHERE inquiry_id=?', id], ['DELETE FROM sms_outbox WHERE inquiry_id=?', id], ['DELETE FROM photos WHERE inquiry_id=?', id], ['DELETE FROM inquiries WHERE id=?', id]]);
+  await db.batch([['DELETE FROM talk_messages WHERE inquiry_id=?', id], ['DELETE FROM push_outbox WHERE inquiry_id=?', id], ['DELETE FROM sms_outbox WHERE inquiry_id=?', id], ['DELETE FROM photos WHERE inquiry_id=?', id], ['DELETE FROM inquiries WHERE id=?', id]]);
 }
 async function draft(request, db, id) {
   const token = request.headers.get('X-Quote-Token') || '';
   if (!UUID.test(id) || !TOKEN.test(token)) reject(404, '접수 정보를 찾을 수 없습니다.');
   const record = await db.one('SELECT * FROM inquiries WHERE id=? AND token_hash=?', id, await hash(token));
   if (!record || record.status === 'deleting' || (record.status === 'draft' && record.expires_at < Date.now())) reject(404, '접수 정보가 만료되었습니다. 새로 문의해주세요.');
+  return record;
+}
+async function talkLimit(request, env, db) {
+  if (!env.RATE_LIMIT_SALT) throw new Error('RATE_LIMIT_NOT_CONFIGURED');
+  const window = Math.floor(Date.now() / 3600000);
+  const key = await hash(`${env.RATE_LIMIT_SALT}:talk:${request.headers.get('CF-Connecting-IP') || 'unknown'}:${window}`);
+  const result = await db.one('INSERT INTO rate_limits (key,count,expires_at) VALUES (?,1,?) ON CONFLICT(key) DO UPDATE SET count=count+1 RETURNING count', key, (window + 2) * 3600000);
+  if (result.count > 60) reject(429, '메시지를 너무 자주 보냈습니다. 잠시 후 다시 보내거나 전화로 문의해주세요.');
+}
+// The customer's side of a consultation chat: the inquiry id plus the private key from their link.
+async function talkInquiry(request, env, db, id) {
+  const record = UUID.test(id) && await talkKeyMatches(env, id, request.headers.get('X-Talk-Key') || '') ? await db.one('SELECT id,receipt,service,status FROM inquiries WHERE id=? AND status IN (\'new\',\'consulting\')', id) : null;
+  if (!record) reject(404, '상담 채팅을 찾을 수 없습니다. 상담이 끝났거나 주소가 잘못되었습니다.');
   return record;
 }
 function imageType(bytes) {
@@ -158,6 +172,44 @@ async function api(request, env, ctx, pathname, signInUrl) {
     try { messages = chatMessages(value.messages); } catch { reject(400, '질문은 500자 이내로 입력해주세요.'); }
     await chatLimit(request, env, db);
     return json(await chatReply(env, product, messages));
+  }
+  const talkRoute = pathname.match(/^\/api\/talk\/([^/]+)$/);
+  if (talkRoute && request.method === 'GET') {
+    const record = await talkInquiry(request, env, db, talkRoute[1]);
+    return json({ receipt: record.receipt, service: record.service, messages: await talkMessages(db, record.id) });
+  }
+  if (talkRoute && request.method === 'POST') {
+    const record = await talkInquiry(request, env, db, talkRoute[1]);
+    const body = talkBody((await readJson(request)).body);
+    if (!body) reject(400, '메시지는 1000자 이내로 입력해주세요.');
+    await talkLimit(request, env, db);
+    const previous = await db.one('SELECT max(created_at) AS at FROM talk_messages WHERE inquiry_id=? AND sender=\'customer\'', record.id);
+    const message = await addTalkMessage(db, record.id, 'customer', body);
+    if (!message) reject(409, '메시지가 너무 많습니다. 전화로 문의해주세요.');
+    // One alert per burst of messages; the alert itself carries no customer details.
+    if (!previous?.at || message.at - previous.at > 60000) {
+      await db.run('INSERT INTO push_outbox (id,inquiry_id,subscription_id,status,attempts,updated_at) SELECT ? || \':\' || id,?,id,\'pending\',0,? FROM push_subscriptions WHERE enabled=1 ON CONFLICT(id) DO NOTHING', message.id, record.id, message.at);
+      ctx.waitUntil(sendInquiryPush(db, env, record.id).catch(() => console.error('PUSH_DISPATCH_FAILED')));
+    }
+    return json({ message }, 201);
+  }
+  const adminTalkRoute = pathname.match(/^\/api\/admin\/quotes\/([^/]+)\/talk$/);
+  if (adminTalkRoute) {
+    const id = adminTalkRoute[1];
+    const record = UUID.test(id) ? await db.one('SELECT id,status FROM inquiries WHERE id=? AND status IN (\'new\',\'consulting\')', id) : null;
+    if (!record) reject(404, '문의가 없거나 삭제되었습니다.');
+    if (request.method === 'GET') {
+      await db.run('UPDATE inquiries SET talk_read_at=? WHERE id=?', Date.now(), id);
+      return json({ messages: await talkMessages(db, id), link: (env.SITE_ORIGIN || new URL(request.url).origin) + await talkLink(env, id) });
+    }
+    if (request.method === 'POST') {
+      const body = talkBody((await readJson(request)).body);
+      if (!body) reject(400, '메시지는 1000자 이내로 입력해주세요.');
+      const message = await addTalkMessage(db, id, 'owner', body);
+      if (!message) reject(409, '이 문의의 메시지가 너무 많습니다.');
+      await db.run('UPDATE inquiries SET status=\'consulting\',talk_read_at=?,updated_at=? WHERE id=?', message.at, message.at, id);
+      return json({ message }, 201);
+    }
   }
   if (!env.BUCKET?.put) throw new Error('STORAGE_UNAVAILABLE');
   if (pathname === '/api/quotes' && request.method === 'POST') {
@@ -195,7 +247,7 @@ async function api(request, env, ctx, pathname, signInUrl) {
   const submitRoute = pathname.match(/^\/api\/quotes\/([^/]+)\/submit$/);
   if (submitRoute && request.method === 'POST') {
     const record = await draft(request, db, submitRoute[1]);
-    if (record.status !== 'draft') return json({ receipt: record.receipt, submitted: true });
+    if (record.status !== 'draft') return json({ receipt: record.receipt, submitted: true, talk: await talkLink(env, record.id).catch(() => null) });
     const value = await readJson(request);
     if (!Array.isArray(value.slots) || value.slots.length > 10 || value.slots.some(slot => !SLOT.test(slot)) || new Set(value.slots).size !== value.slots.length) reject(400, '첨부 사진 정보를 확인해주세요.');
     if (record.consent_version === CONSENT && !value.slots.some(slot => slot.startsWith('door-'))) reject(400, '설치할 문 사진을 한 장 이상 첨부해주세요.');
@@ -207,7 +259,7 @@ async function api(request, env, ctx, pathname, signInUrl) {
       ['INSERT INTO push_outbox (id,inquiry_id,subscription_id,status,attempts,updated_at) SELECT ? || \':\' || id,?,id,\'pending\',0,? FROM push_subscriptions WHERE enabled=1 ON CONFLICT(id) DO NOTHING', record.id, record.id, Date.now()]
     ]);
     ctx.waitUntil(sendInquiryPush(db, env, record.id).catch(() => console.error('PUSH_DISPATCH_FAILED')));
-    return json({ receipt: record.receipt, submitted: true }, 201);
+    return json({ receipt: record.receipt, submitted: true, talk: await talkLink(env, record.id).catch(() => null) }, 201);
   }
   if (pathname === '/api/admin/push' && request.method === 'GET') return json(await pushStatus(db, env, user(request).id));
   if (pathname === '/api/admin/push' && ['PUT','DELETE'].includes(request.method)) {
@@ -228,7 +280,7 @@ async function api(request, env, ctx, pathname, signInUrl) {
   if (pathname === '/api/admin/quotes' && request.method === 'GET') {
     ctx.waitUntil(cleanup(db, env).catch(() => console.error('DRAFT_CLEANUP_FAILED')));
     const offset = Math.max(0, Math.min(100000, Number(new URL(request.url).searchParams.get('offset')) || 0));
-    const rows = await db.all('SELECT id,receipt,service,district,customer_name,phone,address,address_detail,details,status,submitted_at,(SELECT count(*) FROM photos WHERE inquiry_id=inquiries.id) AS photo_count FROM inquiries WHERE status IN (\'new\',\'consulting\') ORDER BY submitted_at DESC LIMIT 51 OFFSET ?', Math.floor(offset));
+    const rows = await db.all('SELECT id,receipt,service,district,customer_name,phone,address,address_detail,details,status,submitted_at,(SELECT count(*) FROM photos WHERE inquiry_id=inquiries.id) AS photo_count,(SELECT count(*) FROM talk_messages WHERE inquiry_id=inquiries.id AND sender=\'customer\' AND created_at>COALESCE(inquiries.talk_read_at,0)) AS unread_messages FROM inquiries WHERE status IN (\'new\',\'consulting\') ORDER BY submitted_at DESC LIMIT 51 OFFSET ?', Math.floor(offset));
     return json({ inquiries: rows.slice(0,50).map(visibleInquiry), hasMore: rows.length > 50, offset });
   }
   const detailRoute = pathname.match(/^\/api\/admin\/quotes\/([^/]+)$/);
@@ -239,7 +291,8 @@ async function api(request, env, ctx, pathname, signInUrl) {
     if (request.method === 'GET') {
       const files = await db.all('SELECT id,kind,mime,size FROM photos WHERE inquiry_id=? ORDER BY kind,id', id);
       const { token_hash, request_key, ...safeRecord } = record;
-      return json({ inquiry: visibleInquiry(safeRecord), photos: files.map(file => ({ ...file, url: `/api/admin/photos/${encodeURIComponent(file.id)}` })) });
+      const unread = await db.one('SELECT count(*) AS count FROM talk_messages WHERE inquiry_id=? AND sender=\'customer\' AND created_at>?', id, record.talk_read_at || 0);
+      return json({ inquiry: { ...visibleInquiry(safeRecord), unread_messages: unread.count }, photos: files.map(file => ({ ...file, url: `/api/admin/photos/${encodeURIComponent(file.id)}` })) });
     }
     if (request.method === 'PATCH') { const value = await readJson(request); if (!['new','consulting'].includes(value.status)) reject(400, '상담 상태를 확인해주세요.'); await db.run('UPDATE inquiries SET status=?,updated_at=? WHERE id=?', value.status, Date.now(), id); return json({ updated: true }); }
     if (request.method === 'DELETE') { const value = await readJson(request); if (value.confirm !== record.receipt) reject(400, '삭제할 문의를 확인해주세요.'); await eraseInquiry(id, db, env); return json({ deleted: true }); }
@@ -269,14 +322,14 @@ export function createWorker(assetProvider, { identify = sitesIdentity, signInUr
         response = new Response(null, { status: 301, headers: { Location: 'https://jeonnamlock.com/' + url.search } });
       }
       else if (path === '/index.html') response = new Response(null, { status: 301, headers: { Location: '/' + url.search } });
-      else response = await assetProvider(path === '/' ? '/index.html' : /^\/admin\/?$/.test(path) ? '/admin.html' : path, env, request);
+      else response = await assetProvider(path === '/' ? '/index.html' : /^\/admin\/?$/.test(path) ? '/admin.html' : /^\/talk\/?$/.test(path) ? '/talk.html' : path, env, request);
     } catch (error) {
       const known=error instanceof HttpError || error instanceof AnalyticsError;
       if (!known) console.error('REQUEST_FAILED', error?.name || 'Error');
       response = json({ error: known ? error.message : '저장 서비스에 잠시 문제가 있습니다. 입력 내용은 그대로 두고 다시 시도해주세요.' }, known ? error.status : 503);
     }
     const headers = new Headers(response.headers);
-    if (url.pathname.startsWith('/api/') || /^\/admin(?:\/|\.|$)/.test(url.pathname) || response.status >= 400) headers.set('X-Robots-Tag', 'noindex, nofollow');
+    if (url.pathname.startsWith('/api/') || /^\/(?:admin|talk)(?:\/|\.|$)/.test(url.pathname) || response.status >= 400) headers.set('X-Robots-Tag', 'noindex, nofollow');
     headers.set('X-Content-Type-Options','nosniff'); headers.set('Referrer-Policy','strict-origin-when-cross-origin'); headers.set('Permissions-Policy','camera=(), microphone=(), geolocation=()');
     const customerVideoPolicy=url.pathname==='/'?' frame-src https://www.youtube-nocookie.com;':'';
     headers.set('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; img-src 'self' blob: data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';"+customerVideoPolicy);
