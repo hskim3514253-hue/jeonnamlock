@@ -24,9 +24,12 @@ const origin = (process.env.SITE_ORIGIN || process.env.RENDER_EXTERNAL_URL || `h
 await mkdir(dataDir, { recursive: true });
 const storage = await createLocalEnvironment(dataDir, origin);
 
-// The wedding invitation and gift ledger app lives under /wedding/ and keeps its files in its own folder on the disk.
+// The wedding invitation and gift ledger app keeps its files in its own folder on the disk.
+// Until WEDDING_HOST names its own domain it lives under /wedding/; after that it is served at
+// that domain's root and /wedding/ here forwards visitors there.
+const weddingHosts = (process.env.WEDDING_HOST || '').toLowerCase().split(',').map(host => host.trim()).filter(host => /^[a-z0-9.-]+$/.test(host));
 process.env.WEDDING_DATA_DIR = path.join(dataDir, 'wedding');
-process.env.WEDDING_ORIGIN = `${origin}/wedding`;
+process.env.WEDDING_ORIGIN = weddingHosts.length ? `https://${weddingHosts[0]}` : `${origin}/wedding`;
 const { default: wedding } = await import('./wedding/server.cjs');
 
 // Web Push keys are created once and kept on the disk, so phones stay subscribed across deploys.
@@ -99,8 +102,18 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, origin);
     if (url.pathname === '/healthz') { res.writeHead(200, { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store' }); res.end('ok'); return; }
-    if (url.pathname === '/wedding') { res.writeHead(308, { Location: '/wedding/' }); res.end(); return; }
-    if (url.pathname.startsWith('/wedding/')) { await wedding.handle(req, res, url.pathname.slice('/wedding'.length)); return; }
+    if (weddingHosts.includes(String(req.headers.host || '').toLowerCase().replace(/:\d+$/, ''))) {
+      res.setHeader('Strict-Transport-Security', 'max-age=31536000');
+      await wedding.handle(req, res, url.pathname);
+      return;
+    }
+    if (url.pathname === '/wedding' || url.pathname.startsWith('/wedding/')) {
+      const rest = url.pathname.slice('/wedding'.length) || '/';
+      if (weddingHosts.length) { res.writeHead(308, { Location: `https://${weddingHosts[0]}${rest}${url.search}` }); res.end(); return; }
+      if (url.pathname === '/wedding') { res.writeHead(308, { Location: '/wedding/' }); res.end(); return; }
+      await wedding.handle(req, res, rest);
+      return;
+    }
     const headers = new Headers();
     for (const [key, value] of Object.entries(req.headers)) {
       // Identity and client-address headers are set here, never taken from the visitor.

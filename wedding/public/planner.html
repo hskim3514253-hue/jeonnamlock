@@ -20,7 +20,7 @@
       view.style.paddingTop = '3rem';
       view.innerHTML = `
         <h1>소개 링크 하나로<br>고객을 연결하세요</h1>
-        <p style="font-weight: 700; margin: 1rem 0 1.5rem;">고객이 내 링크로 가입하면 자동으로 내 고객으로 묶이고, 청첩장에 업체명이 표시되며, 소개 수수료가 월별로 정산됩니다.</p>
+        <p style="font-weight: 500; margin: 1rem 0 1.5rem;">고객이 내 링크로 가입하면 자동으로 내 고객으로 묶이고, 청첩장에 업체명이 표시되며, 소개 수수료가 월별로 정산됩니다.</p>
         <form id="join" class="box">
           <h2>플래너 등록</h2>
           <div class="field"><label for="p_name">이름</label><input id="p_name" name="name" type="text" maxlength="20" required autocomplete="name"></div>
@@ -40,10 +40,10 @@
       document.title = `${p.company} 플래너 페이지`;
       view.innerHTML = `
         <h1 style="font-size: 2rem; margin: 0.75rem 0 0.25rem;">${esc(p.company)}</h1>
-        <p style="font-weight: 800; margin-bottom: 1.25rem;">${esc(p.name)} 플래너</p>
+        <p style="font-weight: 600; margin-bottom: 1.25rem;">${esc(p.name)} 플래너</p>
         <div class="box yellow">
           <h2>내 소개 링크</h2>
-          <p style="font-weight: 700; margin-bottom: 0.75rem;">이 링크를 고객에게 보내세요. 고객이 청첩장을 공개하면 건당 ${won(p.fee)}이 적립됩니다.</p>
+          <p style="font-weight: 500; margin-bottom: 0.75rem;">이 링크를 고객에게 보내세요. 고객이 청첩장을 공개하면 건당 ${won(p.fee)}이 적립됩니다.</p>
           <div class="linkbox">
             <input type="text" readonly value="${esc(link)}" aria-label="소개 링크">
             <button class="btn" type="button" data-copy="${esc(link)}">링크 복사</button>
@@ -78,7 +78,7 @@
         </div>
         <div class="box">
           <h3>이 페이지 주소 보관</h3>
-          <p style="font-weight: 700; margin-bottom: 0.75rem;">지금 주소가 플래너 전용 열쇠입니다. 즐겨찾기에 추가하거나 복사해 두세요.</p>
+          <p style="font-weight: 500; margin-bottom: 0.75rem;">지금 주소가 플래너 전용 열쇠입니다. 즐겨찾기에 추가하거나 복사해 두세요.</p>
           <button class="btn" type="button" data-copy="${esc(abs('planner.html#t=' + token))}">내 페이지 주소 복사</button>
         </div>`;
     }

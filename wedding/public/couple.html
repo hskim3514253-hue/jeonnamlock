@@ -9,7 +9,7 @@
   <style>
     .acct { border: var(--line); padding: 0.75rem; margin-bottom: 0.75rem; background: #fff; }
     .photo { width: 100%; max-height: 320px; object-fit: cover; border: var(--line); display: block; margin-bottom: 0.75rem; }
-    .thanks-item { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; padding: 0.75rem 0; border-top: 2px solid #000; }
+    .thanks-item { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; padding: 0.75rem 0; border-top: 1px solid var(--rule); }
     .thanks-item:first-child { border-top: 0; }
     .bar { height: 22px; border: var(--line); background: #fff; }
     .bar > div { height: 100%; background: var(--green); border-right: var(--line); }
@@ -86,7 +86,7 @@
           </div>
           <div class="box">
             <h2>모바일 청첩장 <span class="tag ${w.published ? 'green' : ''}">${w.published ? '공개 중' : '비공개'}</span></h2>
-            <p style="font-weight: 700; margin-bottom: 0.75rem;">${w.published ? '이 주소를 하객에게 보내세요. 참석 응답이 하객 명단에 자동으로 들어옵니다.' : '청첩장 탭에서 내용을 채우고 공개하면 이 주소로 열립니다.'}</p>
+            <p style="font-weight: 500; margin-bottom: 0.75rem;">${w.published ? '이 주소를 하객에게 보내세요. 참석 응답이 하객 명단에 자동으로 들어옵니다.' : '청첩장 탭에서 내용을 채우고 공개하면 이 주소로 열립니다.'}</p>
             <div class="linkbox">
               <input type="text" readonly value="${esc(inviteUrl())}" aria-label="청첩장 주소">
               <button class="btn" type="button" data-act="copy" data-text="${esc(inviteUrl())}">주소 복사</button>
@@ -95,7 +95,7 @@
           </div>
           <div class="box">
             <h2>접수대 링크</h2>
-            <p style="font-weight: 700; margin-bottom: 0.75rem;">예식 당일 접수를 맡은 분들에게 보내세요. 여러 기기에서 동시에 입력해도 한 장부에 바로 합쳐집니다. 이 링크로는 접수만 할 수 있고 청첩장이나 정산은 볼 수 없습니다.</p>
+            <p style="font-weight: 500; margin-bottom: 0.75rem;">예식 당일 접수를 맡은 분들에게 보내세요. 여러 기기에서 동시에 입력해도 한 장부에 바로 합쳐집니다. 이 링크로는 접수만 할 수 있고 청첩장이나 정산은 볼 수 없습니다.</p>
             <div class="linkbox">
               <input type="text" readonly value="${esc(deskUrl())}" aria-label="접수대 주소">
               <button class="btn" type="button" data-act="copy" data-text="${esc(deskUrl())}">주소 복사</button>
@@ -104,10 +104,10 @@
           </div>
           <div class="box yellow">
             <h2>관리 주소 보관</h2>
-            <p style="font-weight: 700; margin-bottom: 0.75rem;">지금 보고 있는 이 주소가 두 분만의 관리 열쇠입니다. 주소를 아는 사람은 장부를 볼 수 있으니 두 분만 보관하세요.</p>
+            <p style="font-weight: 500; margin-bottom: 0.75rem;">지금 보고 있는 이 주소가 두 분만의 관리 열쇠입니다. 주소를 아는 사람은 장부를 볼 수 있으니 두 분만 보관하세요.</p>
             <button class="btn" type="button" data-act="copy" data-text="${esc(abs('couple.html#t=' + token))}">관리 주소 복사</button>
           </div>
-          ${w.planner ? `<p style="margin-top: 1.25rem; font-weight: 800;">소개 플래너: ${esc(w.planner.company)} ${esc(w.planner.name)}</p>` : ''}`;
+          ${w.planner ? `<p style="margin-top: 1.25rem; font-weight: 600;">소개 플래너: ${esc(w.planner.company)} ${esc(w.planner.name)}</p>` : ''}`;
       },
 
       invite() {
@@ -126,13 +126,13 @@
             </div>
             <div class="box">
               <h2>대표 사진</h2>
-              <div id="photoBox">${w.photo ? `<img class="photo" src="${esc(w.photo)}" alt="대표 사진">` : '<p style="font-weight: 700; margin-bottom: 0.75rem;">아직 사진이 없습니다.</p>'}</div>
+              <div id="photoBox">${w.photo ? `<img class="photo" src="${esc(w.photo)}" alt="대표 사진">` : '<p style="font-weight: 500; margin-bottom: 0.75rem;">아직 사진이 없습니다.</p>'}</div>
               <label class="btn" for="photoFile" style="display: inline-flex;">사진 고르기</label>
               <input id="photoFile" type="file" accept="image/*" hidden>
             </div>
             <div class="box">
               <h2>마음 전하실 곳</h2>
-              <p style="font-weight: 700; margin-bottom: 0.75rem;">청첩장에 계좌번호와 복사 버튼, 토스 송금 버튼이 표시됩니다. 송금 내역은 은행 앱에서 확인한 뒤 장부 탭에서 기록하세요.</p>
+              <p style="font-weight: 500; margin-bottom: 0.75rem;">청첩장에 계좌번호와 복사 버튼, 토스 송금 버튼이 표시됩니다. 송금 내역은 은행 앱에서 확인한 뒤 장부 탭에서 기록하세요.</p>
               <div id="accts"></div>
               <button class="btn sm" type="button" data-act="acctAdd">계좌 추가</button>
               <label class="check" style="margin-top: 1rem;"><input type="checkbox" name="showAccounts" ${w.showAccounts ? 'checked' : ''}> 청첩장에 계좌 표시</label>
@@ -195,9 +195,9 @@
       ledger() {
         return `
           <details class="box" id="addBox" ${state.addOpen ? 'open' : ''}>
-            <summary style="font-weight: 900; font-size: 1.125rem; cursor: pointer;">입금·봉투 직접 기록하기</summary>
+            <summary style="font-weight: 700; font-size: 1.125rem; cursor: pointer;">입금·봉투 직접 기록하기</summary>
             <form id="entryForm" style="margin-top: 1rem;">
-              <p style="font-weight: 700; margin-bottom: 0.75rem;">계좌로 받은 축의금은 은행 앱에서 확인한 뒤 여기에 적어 두면 현장 접수분과 한 장부로 합쳐집니다.</p>
+              <p style="font-weight: 500; margin-bottom: 0.75rem;">계좌로 받은 축의금은 은행 앱에서 확인한 뒤 여기에 적어 두면 현장 접수분과 한 장부로 합쳐집니다.</p>
               <div class="row">
                 <div class="grow"><label for="e_name">보낸 분</label><input id="e_name" name="guestName" type="text" maxlength="30" required autocomplete="off"></div>
                 <div class="grow"><label for="e_amount">금액 (원)</label><input id="e_amount" name="amount" type="number" min="0" step="1000" inputmode="numeric" required></div>
@@ -279,7 +279,7 @@
           </div>
           <div class="box">
             <h2>식권</h2>
-            <p style="font-weight: 700;">식사 예정 응답 ${sum(yes, (g) => g.count)}명 · 실제 발급 ${sum(w.entries, (e) => e.tickets)}장</p>
+            <p style="font-weight: 500;">식사 예정 응답 ${sum(yes, (g) => g.count)}명 · 실제 발급 ${sum(w.entries, (e) => e.tickets)}장</p>
           </div>`;
       },
     };
@@ -299,7 +299,7 @@
           <td style="max-width: 220px;">${esc(e.memo)}${e.by ? `<div class="muted">접수: ${esc(e.by)}</div>` : ''}</td>
           <td class="r"><button class="btn sm" type="button" data-act="entryEdit" data-id="${e.id}" aria-label="${esc(e.guestName)} 수정">수정</button></td>
         </tr>`).join('')}</tbody></table></div>
-        <p style="margin-top: 1rem; font-weight: 900; font-size: 1.125rem;" class="num">${q ? '검색 결과 ' : ''}${list.length}건 · ${won(sum(list, (e) => e.amount))}</p>`
+        <p style="margin-top: 1rem; font-weight: 700; font-size: 1.125rem;" class="num">${q ? '검색 결과 ' : ''}${list.length}건 · ${won(sum(list, (e) => e.amount))}</p>`
         : `<p class="empty">${q ? '검색 결과가 없습니다.' : '아직 접수 내역이 없습니다.'}</p>`;
     }
 
@@ -322,7 +322,7 @@
         </div>
         <div style="margin-top: 0.5rem;"><label>카카오페이 송금 링크 <span class="muted">(선택)</span></label><input data-k="kakaoLink" type="url" maxlength="200" value="${esc(a.kakaoLink)}" placeholder="https://qr.kakaopay.com/..."></div>
         <button class="btn sm" type="button" data-act="acctDel" data-id="${i}" style="margin-top: 0.75rem;">이 계좌 삭제</button>
-      </div>`).join('') || '<p style="font-weight: 700; margin-bottom: 0.75rem;">등록된 계좌가 없습니다.</p>';
+      </div>`).join('') || '<p style="font-weight: 500; margin-bottom: 0.75rem;">등록된 계좌가 없습니다.</p>';
     }
 
     async function saveInvite(published) {
@@ -456,7 +456,7 @@
         watchVersion(token, () => state.w.v, () => refresh().catch(() => {}));
       } catch (err) {
         $('#title').textContent = '예식을 찾을 수 없습니다';
-        view.innerHTML = `<div class="box"><p style="font-weight: 800; margin-bottom: 1rem;">${esc(err.message)}</p><a class="btn" href="./">처음으로</a></div>`;
+        view.innerHTML = `<div class="box"><p style="font-weight: 600; margin-bottom: 1rem;">${esc(err.message)}</p><a class="btn" href="./">처음으로</a></div>`;
       }
     })();
   </script>
